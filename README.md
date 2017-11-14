@@ -17,7 +17,7 @@ osmpbf = "0.1"
 and this to your crate root:
 
 ```rust
-extern crate osmbpf;
+extern crate osmpbf;
 ```
 
 Here's a simple example that counts all the ways in a file:
@@ -105,7 +105,7 @@ aggregating all nodes in a file.
 
 Elements reference each other using integer IDs. Corresponding elements could be
 stored in any Blob, so finding them can involve iterating over the whole file.
-Some files declare an optional feature "Sort.Type_then_ID" in the HeaderBlock to
+Some files declare an optional feature "Sort.Type\_then\_ID" in the HeaderBlock to
 indicate that elements are stored sorted by their type and then ID. This can be
 used to dramatically reduce the search space.
 
