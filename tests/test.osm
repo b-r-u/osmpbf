@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='JOSM'>
+  <node timestamp='2003-04-05T06:07:08Z' id='105' lat='52.12240315616' lon='11.62840177902' version='1' user='testuser' uid='17' visible='true' />
+  <node timestamp='2003-04-05T06:07:09Z' id='106' lat='52.11992359584' lon='11.62564468943' version='1' user='testuser' uid='17' visible='true' />
+  <node timestamp='2003-04-05T06:07:10Z' id='108' lat='52.11989910567' lon='11.63101926915' version='1' user='testuser' uid='17' visible='true' />
+  <way timestamp='2003-04-05T06:07:11Z' id='107' version='1' user='testuser' uid='17' visible='true'>
+    <nd ref='105' />
+    <nd ref='106' />
+    <nd ref='108' />
+    <nd ref='105' />
+    <tag k='building' v='yes' />
+    <tag k='name' v='triangle' />
+  </way>
+  <relation timestamp='2003-04-05T06:07:12Z' id='120' version='1' user='testuser' uid='17' visible='true'>
+    <member type='way' ref='107' role='test_role' />
+    <tag k='rel_key' v='rel_value' />
+  </relation>
+</osm>

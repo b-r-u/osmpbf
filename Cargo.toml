@@ -1,0 +1,28 @@
+[package]
+name = "osmpbf"
+version = "0.1.0"
+authors = ["Johannes Hofmann <mail@b-r-u.org>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/b-r-u/osmpbf"
+homepage = "https://github.com/b-r-u/osmpbf"
+build = "build.rs"
+description = """
+A reader for the OpenStreetMap PBF file format (*.osm.pbf).
+"""
+
+[features]
+default = ["system-libz"]
+system-libz = ["flate2"]
+
+[dependencies]
+protobuf = "1.4"
+byteorder = "1.1"
+flate2 = { version = "0.2", optional = true }
+inflate = "0.3"
+error-chain = "0.11"
+memmap = "0.6"
+rayon = "0.8.2"
+
+[build-dependencies]
+protoc-rust = "1.4"
