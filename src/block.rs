@@ -1,4 +1,4 @@
-//! `HeaderBlock`, `PrimitiveBlock` and `Group`s
+//! `HeaderBlock`, `PrimitiveBlock` and `PrimitiveGroup`s
 
 use dense::DenseNodeIter;
 use elements::{Node, Way, Relation};
@@ -7,6 +7,7 @@ use proto::osmformat;
 use std;
 
 
+/// A `HeaderBlock`. It contains metadata about following `PrimitiveBlock`s.
 pub struct HeaderBlock {
     header: osmformat::HeaderBlock,
 }
@@ -16,29 +17,35 @@ impl HeaderBlock {
         HeaderBlock { header: header }
     }
 
+    /// Returns a list of required features that a parser needs to implement to parse the following
+    /// `PrimitiveBlock`s.
     pub fn required_features(&self) -> &[String] {
         self.header.get_required_features()
     }
 
+    /// Returns a list of optional features that a parser can choose to ignore.
     pub fn optional_features(&self) -> &[String] {
         self.header.get_optional_features()
     }
 }
 
+/// A `PrimitiveBlock`. It contains a sequence of groups.
 pub struct PrimitiveBlock {
     block: osmformat::PrimitiveBlock,
 }
 
 impl PrimitiveBlock {
-    pub fn new(block: osmformat::PrimitiveBlock) -> PrimitiveBlock {
+    pub(crate) fn new(block: osmformat::PrimitiveBlock) -> PrimitiveBlock {
         PrimitiveBlock { block: block }
     }
 
+    /// Returns an iterator over the groups in this `PrimitiveBlock`.
     pub fn groups(&self) -> GroupIter {
         GroupIter::new(&self.block)
     }
 }
 
+/// A `PrimitiveGroup` contains a sequence of elements of one type.
 pub struct PrimitiveGroup<'a> {
     block: &'a osmformat::PrimitiveBlock,
     group: &'a osmformat::PrimitiveGroup,
@@ -54,23 +61,28 @@ impl<'a> PrimitiveGroup<'a> {
         }
     }
 
+    /// Returns an iterator over the nodes in this group.
     pub fn nodes(&self) -> GroupNodeIter<'a> {
         GroupNodeIter::new(self.block, self.group)
     }
 
+    /// Returns an iterator over the dense nodes in this group.
     pub fn dense_nodes(&self) -> DenseNodeIter<'a> {
         DenseNodeIter::new(self.block, self.group.get_dense())
     }
 
+    /// Returns an iterator over the ways in this group.
     pub fn ways(&self) -> GroupWayIter<'a> {
         GroupWayIter::new(self.block, self.group)
     }
 
+    /// Returns an iterator over the relations in this group.
     pub fn relations(&self) -> GroupRelationIter<'a> {
         GroupRelationIter::new(self.block, self.group)
     }
 }
 
+/// An iterator over the groups in a `PrimitiveBlock`.
 pub struct GroupIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     groups: std::slice::Iter<'a, osmformat::PrimitiveGroup>,
@@ -102,6 +114,7 @@ impl<'a> Iterator for GroupIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupIter<'a> {}
 
+/// An iterator over the nodes in a `Group`.
 pub struct GroupNodeIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     nodes: std::slice::Iter<'a, osmformat::Node>,
@@ -135,6 +148,7 @@ impl<'a> Iterator for GroupNodeIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupNodeIter<'a> {}
 
+/// An iterator over the ways in a `Group`.
 pub struct GroupWayIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     ways: std::slice::Iter<'a, osmformat::Way>,
@@ -168,6 +182,7 @@ impl<'a> Iterator for GroupWayIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupWayIter<'a> {}
 
+/// An iterator over the relations in a `Group`.
 pub struct GroupRelationIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     rels: std::slice::Iter<'a, osmformat::Relation>,
