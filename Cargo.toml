@@ -2,7 +2,6 @@
 name = "osmpbf"
 version = "0.1.0"
 authors = ["Johannes Hofmann <mail@b-r-u.org>"]
-license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/b-r-u/osmpbf"
 homepage = "https://github.com/b-r-u/osmpbf"
@@ -10,6 +9,9 @@ build = "build.rs"
 description = """
 A reader for the OpenStreetMap PBF file format (*.osm.pbf).
 """
+categories = ["parser-implementations", "encoding", "science"]
+keywords = ["openstreetmap", "osm", "pbf", "protocolbuffer", "protobuf"]
+license = "MIT/Apache-2.0"
 
 [features]
 default = ["system-libz"]
