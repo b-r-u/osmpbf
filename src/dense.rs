@@ -10,38 +10,49 @@ use std;
 /// An OpenStreetMap node element from a compressed array of DenseNodes (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
 pub struct DenseNode<'a> {
     block: &'a osmformat::PrimitiveBlock,
+
+    /// The node id. It should be unique between nodes and might be negative to indicate
+    /// that the element has not yet been uploaded to a server.
     pub id: i64,
+    /// The version of this element.
     pub version: i32,
     timestamp: i64,
+    /// The changeset id.
     pub changeset: i64,
+    /// The user id.
     pub uid: i32,
-    pub user_sid: i32,
+    user_sid: i32,
     lat: i64,
     lon: i64,
     keys_vals_indices: &'a [i32],
 }
 
 impl<'a> DenseNode<'a> {
+    /// Returns the user name.
     pub fn user(&self) -> Result<&'a str> {
         str_from_stringtable(self.block, self.user_sid as usize)
     }
 
+    /// Returns the latitude coordinate in degrees.
     pub fn lat(&self) -> f64 {
         0.000_000_001_f64 * (self.block.get_lat_offset() +
                              (i64::from(self.block.get_granularity()) *
                               self.lat)) as f64
     }
 
+    /// Returns the longitude coordinate in degrees.
     pub fn lon(&self) -> f64 {
         0.000_000_001_f64 * (self.block.get_lon_offset() +
                              (i64::from(self.block.get_granularity()) *
                               self.lon)) as f64
     }
 
+    /// Returns the time stamp in milliseconds since the epoch.
     pub fn milli_timestamp(&self) -> i64 {
         self.timestamp * i64::from(self.block.get_date_granularity())
     }
 
+    /// Returns an iterator over the tags of this way (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
     pub fn tags(&self) -> DenseTagIter<'a> {
         DenseTagIter {
             block: self.block,
@@ -50,6 +61,7 @@ impl<'a> DenseNode<'a> {
     }
 }
 
+/// An iterator over dense nodes. It decodes the delta encoded values.
 pub struct DenseNodeIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     dids: std::slice::Iter<'a, i64>, // deltas
@@ -72,7 +84,7 @@ pub struct DenseNodeIter<'a> {
 }
 
 impl<'a> DenseNodeIter<'a> {
-    pub fn new(block: &'a osmformat::PrimitiveBlock,
+    pub(crate) fn new(block: &'a osmformat::PrimitiveBlock,
            osmdense: &'a osmformat::DenseNodes) -> DenseNodeIter<'a> {
         let info = osmdense.get_denseinfo();
         DenseNodeIter {
@@ -164,6 +176,7 @@ impl<'a> Iterator for DenseNodeIter<'a> {
 
 impl<'a> ExactSizeIterator for DenseNodeIter<'a> {}
 
+/// An iterator over the tags in a dense node.
 pub struct DenseTagIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     keys_vals_indices: std::slice::Iter<'a, i32>,
