@@ -5,7 +5,6 @@ authors = ["Johannes Hofmann <mail@b-r-u.org>"]
 readme = "README.md"
 repository = "https://github.com/b-r-u/osmpbf"
 homepage = "https://github.com/b-r-u/osmpbf"
-build = "build.rs"
 description = """
 A reader for the OpenStreetMap PBF file format (*.osm.pbf).
 """
@@ -25,6 +24,3 @@ inflate = "0.3"
 error-chain = "0.11"
 memmap = "0.6"
 rayon = "0.8.2"
-
-[build-dependencies]
-protoc-rust = "1.4"
