@@ -114,7 +114,7 @@ impl<'a> Iterator for GroupIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupIter<'a> {}
 
-/// An iterator over the nodes in a `Group`.
+/// An iterator over the nodes in a `PrimitiveGroup`.
 pub struct GroupNodeIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     nodes: std::slice::Iter<'a, osmformat::Node>,
@@ -148,7 +148,7 @@ impl<'a> Iterator for GroupNodeIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupNodeIter<'a> {}
 
-/// An iterator over the ways in a `Group`.
+/// An iterator over the ways in a `PrimitiveGroup`.
 pub struct GroupWayIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     ways: std::slice::Iter<'a, osmformat::Way>,
@@ -182,7 +182,7 @@ impl<'a> Iterator for GroupWayIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupWayIter<'a> {}
 
-/// An iterator over the relations in a `Group`.
+/// An iterator over the relations in a `PrimitiveGroup`.
 pub struct GroupRelationIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     rels: std::slice::Iter<'a, osmformat::Relation>,
