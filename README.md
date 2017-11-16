@@ -5,6 +5,8 @@ strives to offer the best performance using parallelization and lazy-decoding
 with a simple interface while also exposing iterators for items of every level
 in a PBF file.
 
+[![Build Status](https://travis-ci.org/b-r-u/osmpbf.svg?branch=master)](https://travis-ci.org/b-r-u/osmpbf)
+
 ## Usage
 
 Add this to your `Cargo.toml`:
