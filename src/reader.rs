@@ -74,10 +74,18 @@ impl<R: Read> ElementReader<R> {
                 Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => {},
                 Ok(BlobDecode::OsmData(block)) => {
                     for group in block.groups() {
-                        group.nodes().for_each(|dnode| f(Element::Node(dnode)));
-                        group.dense_nodes().for_each(|node| f(Element::DenseNode(node)));
-                        group.ways().for_each(|way| f(Element::Way(way)));
-                        group.relations().for_each(|relation| f(Element::Relation(relation)));
+                        for node in group.nodes() {
+                            f(Element::Node(node))
+                        }
+                        for dnode in group.dense_nodes() {
+                            f(Element::DenseNode(dnode))
+                        }
+                        for way in group.ways() {
+                            f(Element::Way(way));
+                        }
+                        for relation in group.relations() {
+                            f(Element::Relation(relation));
+                        }
                     }
                 },
                 Err(e) => return Err(e),
