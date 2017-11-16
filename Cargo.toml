@@ -1,6 +1,6 @@
 [package]
 name = "osmpbf"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Johannes Hofmann <mail@b-r-u.org>"]
 readme = "README.md"
 repository = "https://github.com/b-r-u/osmpbf"
@@ -23,4 +23,4 @@ flate2 = { version = "0.2", optional = true }
 inflate = "0.3"
 error-chain = "0.11"
 memmap = "0.6"
-rayon = "0.8.2"
+rayon = "0.9"
