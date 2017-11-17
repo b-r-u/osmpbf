@@ -1,29 +1,31 @@
-# Based on template from here: https://github.com/starkat99/appveyor-rust
+# Based on:
+# https://github.com/starkat99/appveyor-rust
+# https://github.com/alexcrichton/flate2-rs/blob/master/appveyor.yml
 
 os: Visual Studio 2015
 
 environment:
   matrix:
-
-### MSVC Toolchains ###
-    - channel: stable
-      target: x86_64-pc-windows-msvc
-    - channel: stable
-      target: i686-pc-windows-msvc
     - channel: nightly
       target: x86_64-pc-windows-msvc
-    - channel: nightly
-      target: i686-pc-windows-msvc
-    - channel: 1.18.0
-      target: x86_64-pc-windows-msvc
-
-### GNU Toolchains ###
     - channel: nightly
       target: x86_64-pc-windows-gnu
     - channel: nightly
       target: i686-pc-windows-gnu
+    - channel: stable
+      target: x86_64-pc-windows-msvc
+    - channel: stable
+      target: i686-pc-windows-msvc
+    - channel: 1.18.0
+      target: x86_64-pc-windows-msvc
 
 install:
+  - ps: >-
+        If ($Env:TARGET -eq 'x86_64-pc-windows-gnu') {
+          $Env:PATH += ';C:\msys64\mingw64\bin'
+        } ElseIf ($Env:TARGET -eq 'i686-pc-windows-gnu') {
+          $Env:PATH += ';C:\MinGW\bin'
+        }
   - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - rustup-init -yv --default-toolchain %channel% --default-host %target%
   - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
