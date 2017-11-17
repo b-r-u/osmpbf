@@ -14,21 +14,49 @@ use std::fs::File;
 use std::path::Path;
 
 
+/// A read-only memory map.
 pub struct Mmap {
     mmap: memmap::Mmap,
 }
 
 impl Mmap {
-    // The underlying file should not be modified while holding the memory map.
-    // See https://github.com/danburkert/memmap-rs/issues/25
+    /// Creates a memory map from a given file.
+    ///
+    /// # Safety
+    /// The underlying file should not be modified while holding the memory map.
+    /// See https://github.com/danburkert/memmap-rs/issues/25
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let f = std::fs::File::open("tests/test.osm.pbf")?;
+    /// let mmap = unsafe { Mmap::from_file(&f)? };
+    /// # Ok(())
+    /// # }
+    /// ```
     pub unsafe fn from_file(file: &File) -> Result<Mmap> {
         memmap::Mmap::map(file)
             .map(|m| Mmap { mmap: m })
             .chain_err(|| "Could not create memory map from file")
     }
 
-    // The underlying file should not be modified while holding the memory map.
-    // See https://github.com/danburkert/memmap-rs/issues/25
+    /// Creates a memory map from a given path.
+    ///
+    /// # Safety
+    /// The underlying file should not be modified while holding the memory map.
+    /// See https://github.com/danburkert/memmap-rs/issues/25
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let mmap = unsafe { Mmap::from_path("tests/test.osm.pbf")? };
+    /// # Ok(())
+    /// # }
+    /// ```
     pub unsafe fn from_path<P: AsRef<Path>>(path: P) -> Result<Mmap> {
         let file = File::open(&path)?;
         memmap::Mmap::map(&file)
@@ -36,6 +64,7 @@ impl Mmap {
             .chain_err(|| format!("Could not create memory map from path {}", path.as_ref().display()))
     }
 
+    /// Returns an iterator over the blobs in this memory map.
     pub fn blob_iter(&self) -> MmapBlobReader {
         MmapBlobReader::new(self)
     }
@@ -45,12 +74,15 @@ impl Mmap {
     }
 }
 
+/// A PBF blob from a memory map.
 pub struct MmapBlob<'a> {
     header: BlobHeader,
     data: &'a [u8],
 }
 
 impl<'a> MmapBlob<'a> {
+    /// Decodes the Blob and tries to obtain the inner content (usually a `HeaderBlock` or a
+    /// `PrimitiveBlock`). This operation might involve an expensive decompression step.
     pub fn decode(&'a self) -> Result<BlobDecode<'a>> {
         let blob: fileformat::Blob = protobuf::parse_from_bytes(self.data)
             .chain_err(|| "failed to parse Blob")?;
@@ -68,6 +100,7 @@ impl<'a> MmapBlob<'a> {
     }
 }
 
+/// A reader for memory mapped PBF files that allows iterating over `MmapBlob`s.
 #[derive(Clone)]
 pub struct MmapBlobReader<'a> {
     mmap: &'a Mmap,
@@ -76,6 +109,20 @@ pub struct MmapBlobReader<'a> {
 }
 
 impl<'a> MmapBlobReader<'a> {
+    /// Creates a new `MmapBlobReader`.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    ///
+    /// let mmap = unsafe { Mmap::from_path("tests/test.osm.pbf")? };
+    /// let reader = MmapBlobReader::new(&mmap);
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn new(mmap: &Mmap) -> MmapBlobReader {
         MmapBlobReader {
             mmap: mmap,
