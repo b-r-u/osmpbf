@@ -17,17 +17,17 @@ pub struct ElementReader<R: Read> {
 
 impl<R: Read> ElementReader<R> {
     /// Creates a new `ElementReader`.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use osmpbf::*;
-    /// 
+    ///
     /// # fn foo() -> Result<()> {
     /// let f = std::fs::File::open("tests/test.osm.pbf")?;
     /// let buf_reader = std::io::BufReader::new(f);
-    /// 
+    ///
     /// let reader = ElementReader::new(buf_reader);
-    /// 
+    ///
     /// # Ok(())
     /// # }
     /// ```
@@ -39,14 +39,14 @@ impl<R: Read> ElementReader<R> {
 
     /// Decodes the PBF structure sequentially and calls the given closure on each element.
     /// Consider using `par_map_reduce` instead if you need better performance.
-    /// 
+    ///
     /// # Errors
     /// Returns the first Error encountered while parsing the PBF structure.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use osmpbf::*;
-    /// 
+    ///
     /// # fn foo() -> Result<()> {
     /// let reader = ElementReader::from_path("tests/test.osm.pbf")?;
     /// let mut ways = 0_u64;
@@ -57,9 +57,9 @@ impl<R: Read> ElementReader<R> {
     ///         ways += 1;
     ///     }
     /// })?;
-    /// 
+    ///
     /// println!("Number of ways: {}", ways);
-    /// 
+    ///
     /// # Ok(())
     /// # }
     /// ```
@@ -101,14 +101,14 @@ impl<R: Read> ElementReader<R> {
     /// `identity` closure should produce an identity value that is inserted into `reduce_op` when
     /// necessary. The number of times that this identity value is inserted should not alter the
     /// result.
-    /// 
+    ///
     /// # Errors
     /// Returns the first Error encountered while parsing the PBF structure.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use osmpbf::*;
-    /// 
+    ///
     /// # fn foo() -> Result<()> {
     /// let reader = ElementReader::from_path("tests/test.osm.pbf")?;
     ///
@@ -123,7 +123,7 @@ impl<R: Read> ElementReader<R> {
     ///     || 0_u64,      // Zero is the identity value for addition
     ///     |a, b| a + b   // Sum the partial results
     /// )?;
-    /// 
+    ///
     /// println!("Number of ways: {}", ways);
     /// # Ok(())
     /// # }
@@ -154,7 +154,7 @@ impl<R: Read> ElementReader<R> {
                     let rels = block.groups()
                          .flat_map(|g| g.relations())
                          .map(|r| map_op(Element::Relation(r)));
-                
+
                     Ok(dnodes.chain(nodes)
                         .chain(ways)
                         .chain(rels)
@@ -173,14 +173,14 @@ impl<R: Read> ElementReader<R> {
 
 impl ElementReader<BufReader<File>> {
     /// Tries to open the file at the given path and constructs an `ElementReader` from this.
-    /// 
+    ///
     /// # Errors
     /// Returns the same errors that `std::fs::File::open` returns.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use osmpbf::*;
-    /// 
+    ///
     /// # fn foo() -> Result<()> {
     /// let reader = ElementReader::from_path("tests/test.osm.pbf")?;
     /// # Ok(())
