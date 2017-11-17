@@ -8,6 +8,6 @@ rust:
   - nightly
   - 1.18.0
 script:
-  - cargo build --verbose
   - cargo test --verbose
+  - cargo test --verbose --no-default-features
   - cargo doc --verbose
