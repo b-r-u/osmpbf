@@ -52,7 +52,7 @@ decoding the file in parallel:
 
 ```rust
 use osmpbf::*;
- 
+
 fn main() {
     let reader = ElementReader::from_path("tests/test.osm.pbf").unwrap();
 
@@ -67,7 +67,7 @@ fn main() {
         || 0_u64,      // Zero is the identity value for addition
         |a, b| a + b   // Sum the partial results
     ).unwrap();
-     
+
     println!("Number of ways: {}", ways);
 }
 ```
