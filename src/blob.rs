@@ -18,17 +18,27 @@ use flate2::read::ZlibDecoder;
 use inflate::DeflateDecoder;
 
 
+/// The content type of a blob.
 #[derive(Debug, Eq, PartialEq)]
 pub enum BlobType<'a> {
+    /// Blob contains a `HeaderBlock`.
     OsmHeader,
+    /// Blob contains a `PrimitiveBlock`.
     OsmData,
+    /// An unknown blob type with the given string identifier.
+    /// Parsers should ignore unknown blobs they do not expect.
     Unknown(&'a str),
 }
 
 //TODO rename variants to fit proto files
+/// The decoded content of a blob (analogous to `BlobType`).
 pub enum BlobDecode<'a> {
+    /// Blob contains a `HeaderBlock`.
     OsmHeader(HeaderBlock),
+    /// Blob contains a `PrimitiveBlock`.
     OsmData(PrimitiveBlock),
+    /// An unknown blob type with the given string identifier.
+    /// Parsers should ignore unknown blobs they do not expect.
     Unknown(&'a str),
 }
 

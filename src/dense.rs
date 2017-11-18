@@ -7,7 +7,7 @@ use std;
 
 
 //TODO Add getter functions for id, version, uid, ...
-/// An OpenStreetMap node element from a compressed array of DenseNodes (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
+/// An OpenStreetMap node element from a compressed array of dense nodes (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
 pub struct DenseNode<'a> {
     block: &'a osmformat::PrimitiveBlock,
 
