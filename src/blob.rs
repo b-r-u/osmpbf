@@ -43,7 +43,7 @@ pub enum BlobDecode<'a> {
 }
 
 /// A blob.
-/// 
+///
 /// A PBF file consists of a sequence of blobs. This type supports decoding the content of a blob
 /// to different types of blocks that are usually more interesting to the user.
 pub struct Blob {
@@ -109,17 +109,17 @@ pub struct BlobReader<R: Read> {
 
 impl<R: Read> BlobReader<R> {
     /// Creates a new `ElementReader`.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use osmpbf::*;
-    /// 
+    ///
     /// # fn foo() -> Result<()> {
     /// let f = std::fs::File::open("tests/test.osm.pbf")?;
     /// let buf_reader = std::io::BufReader::new(f);
-    /// 
+    ///
     /// let reader = ElementReader::new(buf_reader);
-    /// 
+    ///
     /// # Ok(())
     /// # }
     /// ```
@@ -133,14 +133,14 @@ impl<R: Read> BlobReader<R> {
 
 impl BlobReader<BufReader<File>> {
     /// Tries to open the file at the given path and constructs a `BlobReader` from this.
-    /// 
+    ///
     /// # Errors
     /// Returns the same errors that `std::fs::File::open` returns.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use osmpbf::*;
-    /// 
+    ///
     /// # fn foo() -> Result<()> {
     /// let reader = BlobReader::from_path("tests/test.osm.pbf")?;
     /// # Ok(())

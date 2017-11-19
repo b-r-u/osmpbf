@@ -57,7 +57,7 @@ impl<'a> Node<'a> {
 }
 
 /// An OpenStreetMap way element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Way)).
-/// 
+///
 /// A way contains an ordered list of node references that can be accessed with the `refs` or the
 /// `refs_slice` method.
 pub struct Way<'a> {
@@ -108,7 +108,7 @@ impl<'a> Way<'a> {
 }
 
 /// An OpenStreetMap relation element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Relation)).
-/// 
+///
 /// A relation contains an ordered list of members that can be of any element type.
 pub struct Relation<'a> {
     block: &'a PrimitiveBlock,
@@ -149,7 +149,7 @@ impl<'a> Relation<'a> {
 }
 
 /// An iterator over the references of a way.
-/// 
+///
 /// Each reference corresponds to a node id.
 pub struct WayRefIter<'a> {
     deltas: std::slice::Iter<'a, i64>,
@@ -195,7 +195,7 @@ impl From<osmformat::Relation_MemberType> for RelMemberType {
 
 //TODO encapsulate member_id based on member_type (NodeId, WayId, RelationId)
 /// A member of a relation.
-/// 
+///
 /// Each member has a member type and a member id that references an element of that type.
 pub struct RelMember<'a> {
     block: &'a PrimitiveBlock,
