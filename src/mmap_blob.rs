@@ -4,7 +4,7 @@ extern crate protobuf;
 extern crate byteorder;
 extern crate memmap;
 
-use blob::{BlobDecode, decode_blob};
+use blob::{BlobDecode, BlobType, decode_blob};
 use byteorder::ByteOrder;
 use errors::*;
 use block::{HeaderBlock, PrimitiveBlock};
@@ -96,6 +96,15 @@ impl<'a> MmapBlob<'a> {
                 Ok(BlobDecode::OsmData(PrimitiveBlock::new(block)))
             }
             x => Ok(BlobDecode::Unknown(x)),
+        }
+    }
+
+    /// Returns the type of a blob without decoding its content.
+    pub fn get_type(&self) -> BlobType {
+        match self.header.get_field_type() {
+            "OSMHeader" => BlobType::OsmHeader,
+            "OSMData" => BlobType::OsmData,
+            x => BlobType::Unknown(x),
         }
     }
 }
