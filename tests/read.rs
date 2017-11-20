@@ -119,3 +119,20 @@ fn mmap_read() {
         panic!("Unexpected blob type");
     }
 }
+
+#[test]
+fn decode_blob() {
+    let reader = BlobReader::from_path(TEST_FILE_PATH).unwrap();
+    let blobs = reader.collect::<Result<Vec<_>>>().unwrap();
+
+    assert_eq!(blobs.len(), 2);
+    assert_eq!(blobs[0].get_type(), BlobType::OsmHeader);
+    assert_eq!(blobs[1].get_type(), BlobType::OsmData);
+
+    // decoding to the wrong blob type should not panic, but produce an Err.
+    assert!(blobs[0].to_primitiveblock().is_err());
+    assert!(blobs[1].to_headerblock().is_err());
+
+    assert!(blobs[0].to_headerblock().is_ok());
+    assert!(blobs[1].to_primitiveblock().is_ok());
+}

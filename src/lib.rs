@@ -101,3 +101,4 @@ pub mod block;
 pub mod dense;
 pub mod elements;
 pub mod mmap_blob;
+mod util;

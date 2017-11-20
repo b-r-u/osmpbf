@@ -10,6 +10,7 @@ use proto::fileformat;
 use std::fs::File;
 use std::io::{BufReader, ErrorKind, Read};
 use std::path::Path;
+use util::{parse_message_from_bytes, parse_message_from_reader};
 
 #[cfg(feature = "system-libz")]
 use flate2::read::ZlibDecoder;
@@ -179,7 +180,7 @@ impl<R: Read> Iterator for BlobReader<R> {
             },
         };
 
-        let header: fileformat::BlobHeader = match protobuf::parse_from_reader(&mut self.reader.by_ref().take(size)) {
+        let header: fileformat::BlobHeader = match parse_message_from_reader(&mut self.reader.by_ref().take(size)) {
             Ok(header) => header,
             Err(e) => {
                 self.last_blob_ok = false;
@@ -187,7 +188,7 @@ impl<R: Read> Iterator for BlobReader<R> {
             },
         };
 
-        let blob: fileformat::Blob = match protobuf::parse_from_reader(&mut self.reader.by_ref().take(header.get_datasize() as u64)) {
+        let blob: fileformat::Blob = match parse_message_from_reader(&mut self.reader.by_ref().take(header.get_datasize() as u64)) {
             Ok(blob) => blob,
             Err(e) => {
                 self.last_blob_ok = false;
@@ -203,10 +204,10 @@ impl<R: Read> Iterator for BlobReader<R> {
 pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
     where T: protobuf::Message + protobuf::MessageStatic {
     if blob.has_raw() {
-        protobuf::parse_from_bytes(blob.get_raw()).chain_err(|| "Could not parse raw data")
+        parse_message_from_bytes(blob.get_raw()).chain_err(|| "Could not parse raw data")
     } else if blob.has_zlib_data() {
         let mut decoder = ZlibDecoder::new(blob.get_zlib_data());
-        protobuf::parse_from_reader(&mut decoder).chain_err(|| "Could not parse zlib data")
+        parse_message_from_reader(&mut decoder).chain_err(|| "Could not parse zlib data")
     } else {
         bail!("Blob is missing fields 'raw' and 'zlib_data")
     }
@@ -216,10 +217,10 @@ pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
 pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
     where T: protobuf::Message + protobuf::MessageStatic {
     if blob.has_raw() {
-        protobuf::parse_from_bytes(blob.get_raw()).chain_err(|| "Could not parse raw data")
+        parse_message_from_bytes(blob.get_raw()).chain_err(|| "Could not parse raw data")
     } else if blob.has_zlib_data() {
         let mut decoder = DeflateDecoder::from_zlib(blob.get_zlib_data());
-        protobuf::parse_from_reader(&mut decoder).chain_err(|| "Could not parse zlib data")
+        parse_message_from_reader(&mut decoder).chain_err(|| "Could not parse zlib data")
     } else {
         bail!("Blob is missing fields 'raw' and 'zlib_data")
     }

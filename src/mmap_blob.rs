@@ -5,13 +5,14 @@ extern crate byteorder;
 extern crate memmap;
 
 use blob::{BlobDecode, BlobType, decode_blob};
+use block::{HeaderBlock, PrimitiveBlock};
 use byteorder::ByteOrder;
 use errors::*;
-use block::{HeaderBlock, PrimitiveBlock};
 use proto::{fileformat, osmformat};
 use self::fileformat::BlobHeader;
 use std::fs::File;
 use std::path::Path;
+use util::parse_message_from_bytes;
 
 
 /// A read-only memory map.
@@ -84,7 +85,7 @@ impl<'a> MmapBlob<'a> {
     /// Decodes the Blob and tries to obtain the inner content (usually a `HeaderBlock` or a
     /// `PrimitiveBlock`). This operation might involve an expensive decompression step.
     pub fn decode(&'a self) -> Result<BlobDecode<'a>> {
-        let blob: fileformat::Blob = protobuf::parse_from_bytes(self.data)
+        let blob: fileformat::Blob = parse_message_from_bytes(self.data)
             .chain_err(|| "failed to parse Blob")?;
         match self.header.get_field_type() {
             "OSMHeader" => {
@@ -169,7 +170,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             return Some(Err(Error::from_kind(ErrorKind::Io(io_error))));
         }
 
-        let header: BlobHeader = match protobuf::parse_from_bytes(&slice[4..(4 + header_size)]) {
+        let header: BlobHeader = match parse_message_from_bytes(&slice[4..(4 + header_size)]) {
             Ok(x) => x,
             Err(e) => {
                 self.last_blob_ok = false;
