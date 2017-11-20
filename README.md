@@ -84,35 +84,36 @@ The PBF format as a hierarchy (square brackets `[]` denote arrays):
 Blob[]
 ├── HeaderBlock
 └── PrimitiveBlock
-    └── Group[]
+    └── PrimitiveGroup[]
     	├── Node[]
     	├── DenseNodes
     	├── Way[]
         └── Relation[]
 ```
 
-At the highest level a PBF file consists of a sequence of Blobs. Each Blob can
-be decoded into either a HeaderBlock or a PrimitiveBlock.
+At the highest level a PBF file consists of a sequence of blobs. Each `Blob` can
+be decoded into either a `HeaderBlock` or a `PrimitiveBlock`.
 
-Iterating over Blobs is very fast, but decoding might involve a more expensive
+Iterating over blobs is very fast, but decoding might involve a more expensive
 decompression step. So especially for larger files it is advisable to
-parallelize at the Blob level as each Blob can be decompressed independently.
+parallelize at the blob level as each blob can be decompressed independently.
+(See the `reader` module in this library for parallel methods)
 
-Usually the first Blob of a file decodes to a HeaderBlock which holds global
-information for all following PrimitiveBlocks, such as a list of required
+Usually the first `Blob` of a file decodes to a `HeaderBlock` which holds global
+information for all following `PrimitiveBlocks`, such as a list of required
 parser features.
 
-A PrimitiveBlock contains an array of Groups (named `PrimitiveGroup` in
-osmformat.proto). Each Group only contains one element type: Node, Way,
-Relation or DenseNodes. A DenseNodes item is an alternative and space-saving
-representation of a Node array. So, do not forget to check for DenseNodes when
-aggregating all nodes in a file.
+A `PrimitiveBlock` contains an array of `PrimitiveGroup`s. Each `PrimitiveGroup`
+only contains one element type: `Node`, `Way`, `Relation` or `DenseNodes`. A
+`DenseNodes` item is an alternative and space-saving representation of a `Node`
+array. So, do not forget to check for `DenseNodes` when aggregating all nodes in
+a file.
 
 Elements reference each other using integer IDs. Corresponding elements could be
-stored in any Blob, so finding them can involve iterating over the whole file.
-Some files declare an optional feature "Sort.Type\_then\_ID" in the HeaderBlock to
-indicate that elements are stored sorted by their type and then ID. This can be
-used to dramatically reduce the search space.
+stored in any blob, so finding them can involve iterating over the whole file.
+Some files declare an optional feature "Sort.Type\_then\_ID" in the
+`HeaderBlock` to indicate that elements are stored sorted by their type and then
+ID. This can be used to dramatically reduce the search space.
 
 # License
 
