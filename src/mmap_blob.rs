@@ -89,11 +89,11 @@ impl<'a> MmapBlob<'a> {
             .chain_err(|| "failed to parse Blob")?;
         match self.header.get_field_type() {
             "OSMHeader" => {
-                let block: osmformat::HeaderBlock = decode_blob(&blob).unwrap();
-                Ok(BlobDecode::OsmHeader(HeaderBlock::new(block)))
+                let block = Box::new(HeaderBlock::new(decode_blob(&blob)?));
+                Ok(BlobDecode::OsmHeader(block))
             }
             "OSMData" => {
-                let block: osmformat::PrimitiveBlock = decode_blob(&blob).unwrap();
+                let block: osmformat::PrimitiveBlock = decode_blob(&blob)?;
                 Ok(BlobDecode::OsmData(PrimitiveBlock::new(block)))
             }
             x => Ok(BlobDecode::Unknown(x)),
@@ -174,7 +174,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             Ok(x) => x,
             Err(e) => {
                 self.last_blob_ok = false;
-                return Some(Err(e.into()));
+                return Some(Err(e));
             },
         };
 

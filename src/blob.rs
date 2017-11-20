@@ -35,7 +35,7 @@ pub enum BlobType<'a> {
 /// The decoded content of a blob (analogous to `BlobType`).
 pub enum BlobDecode<'a> {
     /// Blob contains a `HeaderBlock`.
-    OsmHeader(HeaderBlock),
+    OsmHeader(Box<HeaderBlock>),
     /// Blob contains a `PrimitiveBlock`.
     OsmData(PrimitiveBlock),
     /// An unknown blob type with the given string identifier.
@@ -65,12 +65,13 @@ impl Blob {
     pub fn decode(&self) -> Result<BlobDecode> {
         match self.get_type() {
             BlobType::OsmHeader => {
-                self.to_headerblock()
-                    .map(BlobDecode::OsmHeader)
+                let block = Box::new(self.to_headerblock()?);
+                Ok(BlobDecode::OsmHeader(block))
+
             },
             BlobType::OsmData => {
-                self.to_primitiveblock()
-                    .map(BlobDecode::OsmData)
+                let block = self.to_primitiveblock()?;
+                Ok(BlobDecode::OsmData(block))
             },
             BlobType::Unknown(x) => Ok(BlobDecode::Unknown(x)),
         }
