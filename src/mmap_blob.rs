@@ -25,7 +25,8 @@ impl Mmap {
     ///
     /// # Safety
     /// The underlying file should not be modified while holding the memory map.
-    /// See https://github.com/danburkert/memmap-rs/issues/25
+    /// See [memmap-rs issue 25](https://github.com/danburkert/memmap-rs/issues/25) for more
+    /// information on the safety of memory maps.
     ///
     /// # Example
     /// ```
@@ -47,7 +48,8 @@ impl Mmap {
     ///
     /// # Safety
     /// The underlying file should not be modified while holding the memory map.
-    /// See https://github.com/danburkert/memmap-rs/issues/25
+    /// See [memmap-rs issue 25](https://github.com/danburkert/memmap-rs/issues/25) for more
+    /// information on the safety of memory maps.
     ///
     /// # Example
     /// ```
