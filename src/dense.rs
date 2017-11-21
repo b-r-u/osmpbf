@@ -8,6 +8,7 @@ use std;
 
 //TODO Add getter functions for id, version, uid, ...
 /// An OpenStreetMap node element from a compressed array of dense nodes (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
+#[derive(Clone, Debug)]
 pub struct DenseNode<'a> {
     block: &'a osmformat::PrimitiveBlock,
 
@@ -62,6 +63,7 @@ impl<'a> DenseNode<'a> {
 }
 
 /// An iterator over dense nodes. It decodes the delta encoded values.
+#[derive(Clone, Debug)]
 pub struct DenseNodeIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     dids: std::slice::Iter<'a, i64>, // deltas
@@ -177,6 +179,7 @@ impl<'a> Iterator for DenseNodeIter<'a> {
 impl<'a> ExactSizeIterator for DenseNodeIter<'a> {}
 
 /// An iterator over the tags in a dense node.
+#[derive(Clone, Debug)]
 pub struct DenseTagIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     keys_vals_indices: std::slice::Iter<'a, i32>,

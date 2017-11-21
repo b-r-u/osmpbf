@@ -8,6 +8,7 @@ use std;
 
 
 /// An OpenStreetMap node element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
+#[derive(Clone, Debug)]
 pub struct Node<'a> {
     block: &'a PrimitiveBlock,
     osmnode: &'a osmformat::Node,
@@ -60,6 +61,7 @@ impl<'a> Node<'a> {
 ///
 /// A way contains an ordered list of node references that can be accessed with the `refs` or the
 /// `refs_slice` method.
+#[derive(Clone, Debug)]
 pub struct Way<'a> {
     block: &'a PrimitiveBlock,
     osmway: &'a osmformat::Way,
@@ -110,6 +112,7 @@ impl<'a> Way<'a> {
 /// An OpenStreetMap relation element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Relation)).
 ///
 /// A relation contains an ordered list of members that can be of any element type.
+#[derive(Clone, Debug)]
 pub struct Relation<'a> {
     block: &'a PrimitiveBlock,
     osmrel: &'a osmformat::Relation,
@@ -151,6 +154,7 @@ impl<'a> Relation<'a> {
 /// An iterator over the references of a way.
 ///
 /// Each reference corresponds to a node id.
+#[derive(Clone, Debug)]
 pub struct WayRefIter<'a> {
     deltas: std::slice::Iter<'a, i64>,
     current: i64,
@@ -177,6 +181,7 @@ impl<'a> Iterator for WayRefIter<'a> {
 impl<'a> ExactSizeIterator for WayRefIter<'a> {}
 
 /// The element type of a relation member.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RelMemberType {
     Node,
     Way,
@@ -197,6 +202,7 @@ impl From<osmformat::Relation_MemberType> for RelMemberType {
 /// A member of a relation.
 ///
 /// Each member has a member type and a member id that references an element of that type.
+#[derive(Clone, Debug)]
 pub struct RelMember<'a> {
     block: &'a PrimitiveBlock,
     pub role_sid: i32,
@@ -212,6 +218,7 @@ impl<'a> RelMember<'a> {
 }
 
 /// An iterator over the members of a relation.
+#[derive(Clone, Debug)]
 pub struct RelMemberIter<'a> {
     block: &'a PrimitiveBlock,
     role_sids: std::slice::Iter<'a, i32>,
@@ -260,6 +267,7 @@ impl<'a> Iterator for RelMemberIter<'a> {
 impl<'a> ExactSizeIterator for RelMemberIter<'a> {}
 
 /// An iterator over the tags of an element.
+#[derive(Clone, Debug)]
 pub struct TagIter<'a> {
     block: &'a PrimitiveBlock,
     key_indices: std::slice::Iter<'a, u32>,
@@ -293,6 +301,7 @@ impl<'a> Iterator for TagIter<'a> {
 impl<'a> ExactSizeIterator for TagIter<'a> {}
 
 /// Additional metadata that might be included in each element.
+#[derive(Clone, Debug)]
 pub struct Info<'a> {
     block: &'a PrimitiveBlock,
     info: &'a osmformat::Info,

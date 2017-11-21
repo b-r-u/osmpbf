@@ -11,6 +11,7 @@ use std::path::Path;
 
 
 /// A reader for PBF files that gives access to the stored elements: nodes, ways and relations.
+#[derive(Clone, Debug)]
 pub struct ElementReader<R: Read> {
     blob_iter: BlobReader<R>,
 }
@@ -198,6 +199,7 @@ impl ElementReader<BufReader<File>> {
 }
 
 /// An enum with the OSM core elements: nodes, ways and relations.
+#[derive(Clone, Debug)]
 pub enum Element<'a> {
     /// A node. Also, see `DenseNode`.
     Node(Node<'a>),

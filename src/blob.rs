@@ -27,7 +27,7 @@ pub static MAX_BLOB_MESSAGE_SIZE: u64 = 32 * 1024 * 1024;
 
 
 /// The content type of a blob.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BlobType<'a> {
     /// Blob contains a `HeaderBlock`.
     OsmHeader,
@@ -40,6 +40,7 @@ pub enum BlobType<'a> {
 
 //TODO rename variants to fit proto files
 /// The decoded content of a blob (analogous to `BlobType`).
+#[derive(Clone, Debug)]
 pub enum BlobDecode<'a> {
     /// Blob contains a `HeaderBlock`.
     OsmHeader(Box<HeaderBlock>),
@@ -54,6 +55,7 @@ pub enum BlobDecode<'a> {
 ///
 /// A PBF file consists of a sequence of blobs. This type supports decoding the content of a blob
 /// to different types of blocks that are usually more interesting to the user.
+#[derive(Clone, Debug)]
 pub struct Blob {
     header: fileformat::BlobHeader,
     blob: fileformat::Blob,
@@ -111,6 +113,7 @@ impl Blob {
 }
 
 /// A reader for PBF files that allows iterating over `Blob`s.
+#[derive(Clone, Debug)]
 pub struct BlobReader<R: Read> {
     reader: R,
     last_blob_ok: bool,

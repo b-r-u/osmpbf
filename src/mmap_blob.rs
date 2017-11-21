@@ -16,6 +16,7 @@ use util::parse_message_from_bytes;
 
 
 /// A read-only memory map.
+#[derive(Debug)]
 pub struct Mmap {
     mmap: memmap::Mmap,
 }
@@ -78,6 +79,7 @@ impl Mmap {
 }
 
 /// A PBF blob from a memory map.
+#[derive(Clone, Debug)]
 pub struct MmapBlob<'a> {
     header: BlobHeader,
     data: &'a [u8],
@@ -113,7 +115,7 @@ impl<'a> MmapBlob<'a> {
 }
 
 /// A reader for memory mapped PBF files that allows iterating over `MmapBlob`s.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MmapBlobReader<'a> {
     mmap: &'a Mmap,
     offset: usize,

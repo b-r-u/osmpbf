@@ -8,6 +8,7 @@ use std;
 
 
 /// A `HeaderBlock`. It contains metadata about following `PrimitiveBlock`s.
+#[derive(Clone, Debug)]
 pub struct HeaderBlock {
     header: osmformat::HeaderBlock,
 }
@@ -30,6 +31,7 @@ impl HeaderBlock {
 }
 
 /// A `PrimitiveBlock`. It contains a sequence of groups.
+#[derive(Clone, Debug)]
 pub struct PrimitiveBlock {
     block: osmformat::PrimitiveBlock,
 }
@@ -46,6 +48,7 @@ impl PrimitiveBlock {
 }
 
 /// A `PrimitiveGroup` contains a sequence of elements of one type.
+#[derive(Clone, Debug)]
 pub struct PrimitiveGroup<'a> {
     block: &'a osmformat::PrimitiveBlock,
     group: &'a osmformat::PrimitiveGroup,
@@ -83,6 +86,7 @@ impl<'a> PrimitiveGroup<'a> {
 }
 
 /// An iterator over the groups in a `PrimitiveBlock`.
+#[derive(Clone, Debug)]
 pub struct GroupIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     groups: std::slice::Iter<'a, osmformat::PrimitiveGroup>,
@@ -115,6 +119,7 @@ impl<'a> Iterator for GroupIter<'a> {
 impl<'a> ExactSizeIterator for GroupIter<'a> {}
 
 /// An iterator over the nodes in a `PrimitiveGroup`.
+#[derive(Clone, Debug)]
 pub struct GroupNodeIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     nodes: std::slice::Iter<'a, osmformat::Node>,
@@ -149,6 +154,7 @@ impl<'a> Iterator for GroupNodeIter<'a> {
 impl<'a> ExactSizeIterator for GroupNodeIter<'a> {}
 
 /// An iterator over the ways in a `PrimitiveGroup`.
+#[derive(Clone, Debug)]
 pub struct GroupWayIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     ways: std::slice::Iter<'a, osmformat::Way>,
@@ -183,6 +189,7 @@ impl<'a> Iterator for GroupWayIter<'a> {
 impl<'a> ExactSizeIterator for GroupWayIter<'a> {}
 
 /// An iterator over the relations in a `PrimitiveGroup`.
+#[derive(Clone, Debug)]
 pub struct GroupRelationIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     rels: std::slice::Iter<'a, osmformat::Relation>,
