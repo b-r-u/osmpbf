@@ -153,7 +153,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             1 ... 3 => {
                 self.last_blob_ok = false;
                 let io_error = ::std::io::Error::new(
-                    ::std::io::ErrorKind::UnexpectedEof, "failed to parse blob length"
+                    ::std::io::ErrorKind::UnexpectedEof, "failed to parse blob header length"
                 );
                 return Some(Err(Error::from_kind(ErrorKind::Io(io_error))));
             },
@@ -161,6 +161,11 @@ impl<'a> Iterator for MmapBlobReader<'a> {
         }
 
         let header_size = byteorder::BigEndian::read_u32(slice) as usize;
+
+        if header_size as u64 >= ::blob::MAX_BLOB_HEADER_SIZE {
+            self.last_blob_ok = false;
+            return Some(Err(ErrorKind::BlobHeaderTooBig(header_size as u64).into()));
+        }
 
         if slice.len() < 4 + header_size {
             self.last_blob_ok = false;

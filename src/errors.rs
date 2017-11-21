@@ -10,6 +10,16 @@ error_chain!{
             display("stringtable index out of bounds: {}", index)
         }
 
+        BlobHeaderTooBig(size: u64) {
+            description("blob header is too big")
+            display("blob header is too big: {} bytes", size)
+        }
+
+        BlobMessageTooBig(size: u64) {
+            description("blob message is too big")
+            display("blob message is too big: {} bytes", size)
+        }
+
         //TODO add UnexpectedPrimitiveBlock
     }
 }
