@@ -129,23 +129,9 @@ impl<R: Read> ElementReader<R> {
                     Ok(identity())
                 },
                 Ok(BlobDecode::OsmData(block)) => {
-                    let dnodes = block.groups()
-                         .flat_map(|g| g.dense_nodes())
-                         .map(|dn| map_op(Element::DenseNode(dn)));
-                    let nodes = block.groups()
-                         .flat_map(|g| g.nodes())
-                         .map(|n| map_op(Element::Node(n)));
-                    let ways = block.groups()
-                         .flat_map(|g| g.ways())
-                         .map(|w| map_op(Element::Way(w)));
-                    let rels = block.groups()
-                         .flat_map(|g| g.relations())
-                         .map(|r| map_op(Element::Relation(r)));
-
-                    Ok(dnodes.chain(nodes)
-                        .chain(ways)
-                        .chain(rels)
-                        .fold(identity(), |a, b| reduce_op(a, b)))
+                    Ok(block.elements()
+                            .map(|e| map_op(e))
+                            .fold(identity(), |a, b| reduce_op(a, b)))
                 },
                 Err(e) => Err(e),
             }

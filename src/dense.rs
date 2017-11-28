@@ -110,6 +110,29 @@ impl<'a> DenseNodeIter<'a> {
             keys_vals_index: 0,
         }
     }
+
+    pub(crate) fn empty(block: &'a osmformat::PrimitiveBlock) -> DenseNodeIter<'a> {
+        DenseNodeIter {
+            block: block,
+            dids: [].iter(),
+            cid: 0,
+            versions: [].iter(),
+            dtimestamps: [].iter(),
+            ctimestamp: 0,
+            dchangesets: [].iter(),
+            cchangeset: 0,
+            duids: [].iter(),
+            cuid: 0,
+            duser_sids: [].iter(),
+            cuser_sid: 0,
+            dlats: [].iter(),
+            clat: 0,
+            dlons: [].iter(),
+            clon: 0,
+            keys_vals_slice: &[],
+            keys_vals_index: 0,
+        }
+    }
 }
 
 

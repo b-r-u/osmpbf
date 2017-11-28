@@ -41,6 +41,11 @@ impl PrimitiveBlock {
         PrimitiveBlock { block: block }
     }
 
+    /// Returns an iterator over the elements in this `PrimitiveBlock`.
+    pub fn elements(&self) -> BlockElementsIter {
+        BlockElementsIter::new(&self.block)
+    }
+
     /// Returns an iterator over the groups in this `PrimitiveBlock`.
     pub fn groups(&self) -> GroupIter {
         GroupIter::new(&self.block)
@@ -112,6 +117,118 @@ impl<'a> PrimitiveGroup<'a> {
         GroupRelationIter::new(self.block, self.group)
     }
 }
+
+/// An iterator over the elements in a `PrimitiveGroup`.
+#[derive(Clone, Debug)]
+pub struct BlockElementsIter<'a> {
+    block: &'a osmformat::PrimitiveBlock,
+    state: ElementsIterState,
+    groups: std::slice::Iter<'a, osmformat::PrimitiveGroup>,
+    dense_nodes: DenseNodeIter<'a>,
+    nodes: std::slice::Iter<'a, osmformat::Node>,
+    ways: std::slice::Iter<'a, osmformat::Way>,
+    relations: std::slice::Iter<'a, osmformat::Relation>,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum ElementsIterState {
+    Group,
+    DenseNode,
+    Node,
+    Way,
+    Relation
+}
+
+impl<'a> BlockElementsIter<'a> {
+    fn new(block: &'a osmformat::PrimitiveBlock) -> BlockElementsIter<'a> {
+        BlockElementsIter {
+            block: block,
+            state: ElementsIterState::Group,
+            groups: block.get_primitivegroup().iter(),
+            dense_nodes: DenseNodeIter::empty(block),
+            nodes: [].iter(),
+            ways: [].iter(),
+            relations: [].iter(),
+        }
+    }
+
+    #[inline]
+    fn step(&mut self) -> Option<Option<Element<'a>>> {
+        match self.state {
+            ElementsIterState::Group => {
+                match self.groups.next() {
+                    Some(group) => {
+                        self.state = ElementsIterState::DenseNode;
+                        self.dense_nodes = DenseNodeIter::new(self.block, group.get_dense());
+                        self.nodes = group.get_nodes().iter();
+                        self.ways = group.get_ways().iter();
+                        self.relations = group.get_relations().iter();
+                        None
+                    },
+                    None => Some(None),
+                }
+            },
+            ElementsIterState::DenseNode => {
+                match self.dense_nodes.next() {
+                    Some(dense_node) => {
+                        Some(Some(Element::DenseNode(dense_node)))
+                    },
+                    None => {
+                        self.state = ElementsIterState::Node;
+                        None
+                    },
+                }
+            },
+            ElementsIterState::Node => {
+                match self.nodes.next() {
+                    Some(node) => {
+                        Some(Some(Element::Node(Node::new(self.block, node))))
+                    },
+                    None => {
+                        self.state = ElementsIterState::Way;
+                        None
+                    },
+                }
+            },
+            ElementsIterState::Way => {
+                match self.ways.next() {
+                    Some(way) => {
+                        Some(Some(Element::Way(Way::new(self.block, way))))
+                    },
+                    None => {
+                        self.state = ElementsIterState::Relation;
+                        None
+                    },
+                }
+            },
+            ElementsIterState::Relation => {
+                match self.relations.next() {
+                    Some(rel) => {
+                        Some(Some(Element::Relation(Relation::new(self.block, rel))))
+                    },
+                    None => {
+                        self.state = ElementsIterState::Group;
+                        None
+                    },
+                }
+            },
+        }
+    }
+}
+
+impl<'a> Iterator for BlockElementsIter<'a> {
+    type Item = Element<'a>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(element) = self.step() {
+                return element;
+            }
+        }
+    }
+}
+
 
 /// An iterator over the groups in a `PrimitiveBlock`.
 #[derive(Clone, Debug)]
