@@ -25,7 +25,7 @@ fn check_header_block_content(block: &HeaderBlock) {
 // Compare the content of a PrimitiveBlock with known values from the test file.
 fn check_primitive_block_content(block: &PrimitiveBlock) {
     let nodes: Vec<_> = block.groups().flat_map(|g| g.nodes()).collect();
-    if nodes.len() > 0 {
+    if !nodes.is_empty() {
         assert_eq!(nodes.len(), 3);
 
         assert!(approx_eq(nodes[1].lat(), 52.11992359584));
@@ -44,7 +44,7 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
     }
 
     let dense_nodes: Vec<_> = block.groups().flat_map(|g| g.dense_nodes()).collect();
-    if dense_nodes.len() > 0 {
+    if !dense_nodes.is_empty() {
         assert_eq!(dense_nodes.len(), 3);
 
         assert!(approx_eq(dense_nodes[1].lat(), 52.11992359584));
