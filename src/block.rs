@@ -45,6 +45,14 @@ impl PrimitiveBlock {
     pub fn groups(&self) -> GroupIter {
         GroupIter::new(&self.block)
     }
+
+    /// Returns the raw stringtable. Elements in a `PrimitiveBlock` do not store strings
+    /// themselves; instead, they just store indices to the stringtable. By convention, the
+    /// contained strings are UTF-8 encoded but it is not safe to assume that (use
+    /// `std::str::from_utf8`).
+    pub fn raw_stringtable(&self) -> &[Vec<u8>] {
+        self.block.get_stringtable().get_s()
+    }
 }
 
 /// A `PrimitiveGroup` contains a sequence of elements of one type.

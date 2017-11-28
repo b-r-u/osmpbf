@@ -28,7 +28,28 @@ impl<'a> Node<'a> {
         self.osmnode.get_id()
     }
 
-    /// Returns an iterator over the tags of this node (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// Returns an iterator over the tags of this node
+    /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// A tag is represented as a pair of strings (key and value).
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let reader = ElementReader::from_path("tests/test.osm.pbf")?;
+    ///
+    /// reader.for_each(|element| {
+    ///     if let Element::Node(node) = element {
+    ///         for (key, value) in node.tags() {
+    ///             println!("key: {}, value: {}", key, value);
+    ///         }
+    ///     }
+    /// })?;
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
@@ -55,6 +76,26 @@ impl<'a> Node<'a> {
                              (i64::from(self.block.get_granularity()) *
                               self.osmnode.get_lon())) as f64
     }
+
+    /// Returns an iterator over the tags of this node
+    /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
+    /// `PrimitiveBlock`.
+    pub fn raw_tags(&self) -> RawTagIter<'a> {
+        RawTagIter {
+            block: self.block,
+            key_indices: self.osmnode.get_keys().iter(),
+            val_indices: self.osmnode.get_vals().iter(),
+        }
+    }
+
+    /// Returns the raw stringtable. Elements in a `PrimitiveBlock` do not store strings
+    /// themselves; instead, they just store indices to a common stringtable. By convention, the
+    /// contained strings are UTF-8 encoded but it is not safe to assume that (use
+    /// `std::str::from_utf8`).
+    pub fn raw_stringtable(&self) -> &[Vec<u8>] {
+        self.block.get_stringtable().get_s()
+    }
 }
 
 /// An OpenStreetMap way element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Way)).
@@ -80,7 +121,28 @@ impl<'a> Way<'a> {
         self.osmway.get_id()
     }
 
-    /// Returns an iterator over the tags of this way (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// Returns an iterator over the tags of this way
+    /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// A tag is represented as a pair of strings (key and value).
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let reader = ElementReader::from_path("tests/test.osm.pbf")?;
+    ///
+    /// reader.for_each(|element| {
+    ///     if let Element::Way(way) = element {
+    ///         for (key, value) in way.tags() {
+    ///             println!("key: {}, value: {}", key, value);
+    ///         }
+    ///     }
+    /// })?;
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
@@ -107,6 +169,26 @@ impl<'a> Way<'a> {
     pub fn refs_slice(&self) -> &[i64] {
         self.osmway.get_refs()
     }
+
+    /// Returns an iterator over the tags of this way
+    /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
+    /// `PrimitiveBlock`.
+    pub fn raw_tags(&self) -> RawTagIter<'a> {
+        RawTagIter {
+            block: self.block,
+            key_indices: self.osmway.get_keys().iter(),
+            val_indices: self.osmway.get_vals().iter(),
+        }
+    }
+
+    /// Returns the raw stringtable. Elements in a `PrimitiveBlock` do not store strings
+    /// themselves; instead, they just store indices to a common stringtable. By convention, the
+    /// contained strings are UTF-8 encoded but it is not safe to assume that (use
+    /// `std::str::from_utf8`).
+    pub fn raw_stringtable(&self) -> &[Vec<u8>] {
+        self.block.get_stringtable().get_s()
+    }
 }
 
 /// An OpenStreetMap relation element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Relation)).
@@ -131,7 +213,28 @@ impl<'a> Relation<'a> {
         self.osmrel.get_id()
     }
 
-    /// Returns an iterator over the tags of this relation (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// Returns an iterator over the tags of this relation
+    /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// A tag is represented as a pair of strings (key and value).
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let reader = ElementReader::from_path("tests/test.osm.pbf")?;
+    ///
+    /// reader.for_each(|element| {
+    ///     if let Element::Relation(relation) = element {
+    ///         for (key, value) in relation.tags() {
+    ///             println!("key: {}, value: {}", key, value);
+    ///         }
+    ///     }
+    /// })?;
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
@@ -148,6 +251,26 @@ impl<'a> Relation<'a> {
     /// Returns an iterator over the members of this relation.
     pub fn members(&self) -> RelMemberIter<'a> {
         RelMemberIter::new(self.block, self.osmrel)
+    }
+
+    /// Returns an iterator over the tags of this relation
+    /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
+    /// `PrimitiveBlock`.
+    pub fn raw_tags(&self) -> RawTagIter<'a> {
+        RawTagIter {
+            block: self.block,
+            key_indices: self.osmrel.get_keys().iter(),
+            val_indices: self.osmrel.get_vals().iter(),
+        }
+    }
+
+    /// Returns the raw stringtable. Elements in a `PrimitiveBlock` do not store strings
+    /// themselves; instead, they just store indices to a common stringtable. By convention, the
+    /// contained strings are UTF-8 encoded but it is not safe to assume that (use
+    /// `std::str::from_utf8`).
+    pub fn raw_stringtable(&self) -> &[Vec<u8>] {
+        self.block.get_stringtable().get_s()
     }
 }
 
@@ -266,7 +389,7 @@ impl<'a> Iterator for RelMemberIter<'a> {
 
 impl<'a> ExactSizeIterator for RelMemberIter<'a> {}
 
-/// An iterator over the tags of an element.
+/// An iterator over the tags of an element. It returns a pair of strings (key and value).
 #[derive(Clone, Debug)]
 pub struct TagIter<'a> {
     block: &'a PrimitiveBlock,
@@ -299,6 +422,33 @@ impl<'a> Iterator for TagIter<'a> {
 }
 
 impl<'a> ExactSizeIterator for TagIter<'a> {}
+
+/// An iterator over the tags of an element. It returns a pair of indices (key and value) to the
+/// stringtable of the current `PrimitiveBlock`.
+#[derive(Clone, Debug)]
+pub struct RawTagIter<'a> {
+    block: &'a PrimitiveBlock,
+    key_indices: std::slice::Iter<'a, u32>,
+    val_indices: std::slice::Iter<'a, u32>,
+}
+
+//TODO return Result?
+impl<'a> Iterator for RawTagIter<'a> {
+    type Item = (u32, u32);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match (self.key_indices.next(), self.val_indices.next()) {
+            (Some(&key_index), Some(&val_index)) => Some((key_index, val_index)),
+            _ => None,
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.key_indices.size_hint()
+    }
+}
+
+impl<'a> ExactSizeIterator for RawTagIter<'a> {}
 
 /// Additional metadata that might be included in each element.
 #[derive(Clone, Debug)]
