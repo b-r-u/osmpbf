@@ -2,10 +2,29 @@
 
 use errors::*;
 use block::str_from_stringtable;
+use dense::DenseNode;
 use proto::osmformat::PrimitiveBlock;
 use proto::osmformat;
 use std;
 
+
+/// An enum with the OSM core elements: nodes, ways and relations.
+#[derive(Clone, Debug)]
+pub enum Element<'a> {
+    /// A node. Also, see `DenseNode`.
+    Node(Node<'a>),
+
+    /// Just like `Node`, but with a different representation in memory. This distinction is
+    /// usually not important but is not abstracted away to avoid copying. So, if you want to match
+    /// `Node`, you also likely want to match `DenseNode`.
+    DenseNode(DenseNode<'a>),
+
+    /// A way.
+    Way(Way<'a>),
+
+    /// A relation.
+    Relation(Relation<'a>),
+}
 
 /// An OpenStreetMap node element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
 #[derive(Clone, Debug)]

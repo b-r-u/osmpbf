@@ -1,8 +1,7 @@
 //! High level reader interface
 
 use blob::{BlobDecode, BlobReader};
-use dense::DenseNode;
-use elements::{Node, Way, Relation};
+use elements::Element;
 use errors::*;
 use rayon::prelude::*;
 use std::fs::File;
@@ -74,20 +73,7 @@ impl<R: Read> ElementReader<R> {
             match blob.decode() {
                 Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => {},
                 Ok(BlobDecode::OsmData(block)) => {
-                    for group in block.groups() {
-                        for node in group.nodes() {
-                            f(Element::Node(node))
-                        }
-                        for dnode in group.dense_nodes() {
-                            f(Element::DenseNode(dnode))
-                        }
-                        for way in group.ways() {
-                            f(Element::Way(way));
-                        }
-                        for relation in group.relations() {
-                            f(Element::Relation(relation));
-                        }
-                    }
+                    block.for_each_element(&mut f);
                 },
                 Err(e) => return Err(e),
             }
@@ -189,29 +175,8 @@ impl ElementReader<BufReader<File>> {
     /// ```
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self>
     {
-        let f = File::open(path)?;
-        let reader = BufReader::new(f);
-
         Ok(ElementReader {
-            blob_iter: BlobReader::new(reader),
+            blob_iter: BlobReader::from_path(path)?,
         })
     }
-}
-
-/// An enum with the OSM core elements: nodes, ways and relations.
-#[derive(Clone, Debug)]
-pub enum Element<'a> {
-    /// A node. Also, see `DenseNode`.
-    Node(Node<'a>),
-
-    /// Just like `Node`, but with a different representation in memory. This distinction is
-    /// usually not important but is not abstracted away to avoid copying. So, if you want to match
-    /// `Node`, you also likely want to match `DenseNode`.
-    DenseNode(DenseNode<'a>),
-
-    /// A way.
-    Way(Way<'a>),
-
-    /// A relation.
-    Relation(Relation<'a>),
 }

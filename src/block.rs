@@ -1,7 +1,7 @@
 //! `HeaderBlock`, `PrimitiveBlock` and `PrimitiveGroup`s
 
 use dense::DenseNodeIter;
-use elements::{Node, Way, Relation};
+use elements::{Element, Node, Way, Relation};
 use errors::*;
 use proto::osmformat;
 use std;
@@ -44,6 +44,26 @@ impl PrimitiveBlock {
     /// Returns an iterator over the groups in this `PrimitiveBlock`.
     pub fn groups(&self) -> GroupIter {
         GroupIter::new(&self.block)
+    }
+
+    /// Calls the given closure on each element.
+    pub fn for_each_element<F>(&self, mut f: F)
+        where F: for<'a> FnMut(Element<'a>)
+    {
+        for group in self.groups() {
+            for node in group.nodes() {
+                f(Element::Node(node))
+            }
+            for dnode in group.dense_nodes() {
+                f(Element::DenseNode(dnode))
+            }
+            for way in group.ways() {
+                f(Element::Way(way));
+            }
+            for relation in group.relations() {
+                f(Element::Relation(relation));
+            }
+        }
     }
 
     /// Returns the raw stringtable. Elements in a `PrimitiveBlock` do not store strings
