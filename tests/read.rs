@@ -72,10 +72,23 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
         assert!(way_tags.contains(&("building", "yes")));
         assert!(way_tags.contains(&("name", "triangle")));
     }
+
+    {
+        let relations: Vec<_> = block.groups().flat_map(|g| g.relations()).collect();
+        assert_eq!(relations.len(), 1);
+
+        let tags = relations[0].tags().collect::<Vec<_>>();
+        assert_eq!(tags.len(), 1);
+        assert!(tags.contains(&("rel_key", "rel_value")));
+
+        let members = relations[0].members().collect::<Vec<_>>();
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].role().unwrap(), "test_role");
+    }
 }
 
 #[test]
-fn read() {
+fn read_blobs() {
     for path in &TEST_FILE_PATHS {
         let reader = BlobReader::from_path(path).unwrap();
         let blobs = reader.collect::<Result<Vec<_>>>().unwrap();
@@ -93,7 +106,7 @@ fn read() {
 }
 
 #[test]
-fn mmap_read() {
+fn read_mmap_blobs() {
     for path in &TEST_FILE_PATHS {
         let mmap = unsafe { Mmap::from_path(path).unwrap() };
         let reader = MmapBlobReader::new(&mmap);
@@ -134,5 +147,32 @@ fn decode_blob() {
 
         assert!(blobs[0].to_headerblock().is_ok());
         assert!(blobs[1].to_primitiveblock().is_ok());
+    }
+}
+
+#[test]
+fn read_elements() {
+    for path in &TEST_FILE_PATHS {
+        let reader = ElementReader::from_path(path).unwrap();
+        let mut elements = 0_usize;
+
+        reader.for_each(|_element| elements += 1).unwrap();
+
+        assert_eq!(elements, 5);
+    }
+}
+
+#[test]
+fn par_read_elements() {
+    for path in &TEST_FILE_PATHS {
+        let reader = ElementReader::from_path(path).unwrap();
+
+        let elements = reader.par_map_reduce(
+            |_element| 1,
+            || 0_usize,
+            |a, b| a + b,
+        ).unwrap();
+
+        assert_eq!(elements, 5);
     }
 }
