@@ -23,7 +23,7 @@ system-libz = ["flate2"]
 [dependencies]
 protobuf = "1.4"
 byteorder = "1.1"
-flate2 = { version = "0.2", optional = true }
+flate2 = { version = "1.0", optional = true }
 inflate = "0.3"
 error-chain = "0.11"
 memmap = "0.6"
