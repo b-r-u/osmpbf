@@ -218,7 +218,7 @@ impl<R: Read> Iterator for BlobReader<R> {
 
 #[cfg(feature = "system-libz")]
 pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
-    where T: protobuf::Message + protobuf::MessageStatic {
+    where T: protobuf::Message {
     if blob.has_raw() {
         let size = blob.get_raw().len() as u64;
         if size < MAX_BLOB_MESSAGE_SIZE {
@@ -237,7 +237,7 @@ pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
 
 #[cfg(not(feature = "system-libz"))]
 pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
-    where T: protobuf::Message + protobuf::MessageStatic {
+    where T: protobuf::Message {
     if blob.has_raw() {
         let size = blob.get_raw().len() as u64;
         if size < MAX_BLOB_MESSAGE_SIZE {
