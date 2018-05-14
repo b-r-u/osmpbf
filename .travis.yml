@@ -6,7 +6,7 @@ rust:
   - stable
   - beta
   - nightly
-  - 1.18.0
+  - 1.23.0
 script:
   - cargo test --verbose
   - cargo test --verbose --no-default-features
