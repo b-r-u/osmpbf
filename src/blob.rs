@@ -5,7 +5,7 @@ extern crate byteorder;
 
 use block::{HeaderBlock, PrimitiveBlock};
 use byteorder::ReadBytesExt;
-use errors::*;
+use error::{BlobError, Result, new_blob_error, new_protobuf_error};
 use proto::fileformat;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -64,8 +64,8 @@ pub struct Blob {
 impl Blob {
     fn new(header: fileformat::BlobHeader, blob: fileformat::Blob) -> Blob {
         Blob {
-            header: header,
-            blob: blob
+            header,
+            blob
         }
     }
 
@@ -100,7 +100,6 @@ impl Blob {
     pub fn to_headerblock(&self) -> Result<HeaderBlock> {
         decode_blob(&self.blob)
             .map(HeaderBlock::new)
-            .chain_err(|| "failed to decode blob to header block")
     }
 
     /// Tries to decode the blob to a `PrimitiveBlock`. This operation might involve an expensive
@@ -108,7 +107,6 @@ impl Blob {
     pub fn to_primitiveblock(&self) -> Result<PrimitiveBlock> {
         decode_blob(&self.blob)
             .map(PrimitiveBlock::new)
-            .chain_err(|| "failed to decode blob to primitive block")
     }
 }
 
@@ -137,7 +135,7 @@ impl<R: Read> BlobReader<R> {
     /// ```
     pub fn new(reader: R) -> BlobReader<R> {
         BlobReader {
-            reader: reader,
+            reader,
             last_blob_ok: true,
         }
     }
@@ -181,11 +179,12 @@ impl<R: Read> Iterator for BlobReader<R> {
             Err(e) => {
                 match e.kind() {
                     ::std::io::ErrorKind::UnexpectedEof => {
+                        //TODO This also accepts corrupted files in the case of 1-3 available bytes
                         return None
                     },
                     _ => {
                         self.last_blob_ok = false;
-                        return Some(Err(Error::with_chain(e, "Could not decode blob header size")));
+                        return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
                     },
                 }
             },
@@ -193,14 +192,14 @@ impl<R: Read> Iterator for BlobReader<R> {
 
         if header_size >= MAX_BLOB_HEADER_SIZE {
             self.last_blob_ok = false;
-            return Some(Err(ErrorKind::BlobHeaderTooBig(header_size).into()));
+            return Some(Err(new_blob_error(BlobError::HeaderTooBig{size: header_size})));
         }
 
         let header: fileformat::BlobHeader = match parse_message_from_reader(&mut self.reader.by_ref().take(header_size)) {
             Ok(header) => header,
             Err(e) => {
                 self.last_blob_ok = false;
-                return Some(Err(Error::with_chain(e, "Could not decode BlobHeader")));
+                return Some(Err(new_protobuf_error(e, "blob header")));
             },
         };
 
@@ -208,7 +207,7 @@ impl<R: Read> Iterator for BlobReader<R> {
             Ok(blob) => blob,
             Err(e) => {
                 self.last_blob_ok = false;
-                return Some(Err(Error::with_chain(e, "Could not decode Blob")));
+                return Some(Err(new_protobuf_error(e, "blob content")));
             },
         };
 
@@ -222,16 +221,18 @@ pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
     if blob.has_raw() {
         let size = blob.get_raw().len() as u64;
         if size < MAX_BLOB_MESSAGE_SIZE {
-            parse_message_from_bytes(blob.get_raw()).chain_err(|| "Could not parse raw data")
+            parse_message_from_bytes(blob.get_raw())
+                .map_err(|e| new_protobuf_error(e, "raw blob data"))
         } else {
-            Err(ErrorKind::BlobMessageTooBig(size).into())
+            Err(new_blob_error(BlobError::MessageTooBig{size}))
         }
     } else if blob.has_zlib_data() {
         let mut decoder = ZlibDecoder::new(blob.get_zlib_data())
             .take(MAX_BLOB_MESSAGE_SIZE);
-        parse_message_from_reader(&mut decoder).chain_err(|| "Could not parse zlib data")
+        parse_message_from_reader(&mut decoder)
+            .map_err(|e| new_protobuf_error(e, "blob zlib data"))
     } else {
-        bail!("Blob is missing fields 'raw' and 'zlib_data")
+        Err(new_blob_error(BlobError::Empty))
     }
 }
 
@@ -241,15 +242,17 @@ pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
     if blob.has_raw() {
         let size = blob.get_raw().len() as u64;
         if size < MAX_BLOB_MESSAGE_SIZE {
-            parse_message_from_bytes(blob.get_raw()).chain_err(|| "Could not parse raw data")
+            parse_message_from_bytes(blob.get_raw())
+                .map_err(|e| new_protobuf_error(e, "raw blob data"))
         } else {
-            Err(ErrorKind::BlobMessageTooBig(size).into())
+            Err(new_blob_error(BlobError::MessageTooBig{size}))
         }
     } else if blob.has_zlib_data() {
         let mut decoder = DeflateDecoder::from_zlib(blob.get_zlib_data())
             .take(MAX_BLOB_MESSAGE_SIZE);
-        parse_message_from_reader(&mut decoder).chain_err(|| "Could not parse zlib data")
+        parse_message_from_reader(&mut decoder)
+            .map_err(|e| new_protobuf_error(e, "blob zlib data"))
     } else {
-        bail!("Blob is missing fields 'raw' and 'zlib_data")
+        Err(new_blob_error(BlobError::Empty))
     }
 }

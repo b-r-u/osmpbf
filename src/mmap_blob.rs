@@ -7,7 +7,7 @@ extern crate memmap;
 use blob::{BlobDecode, BlobType, decode_blob};
 use block::{HeaderBlock, PrimitiveBlock};
 use byteorder::ByteOrder;
-use errors::*;
+use error::{BlobError, Result, new_blob_error, new_protobuf_error};
 use proto::{fileformat, osmformat};
 use self::fileformat::BlobHeader;
 use std::fs::File;
@@ -42,7 +42,7 @@ impl Mmap {
     pub unsafe fn from_file(file: &File) -> Result<Mmap> {
         memmap::Mmap::map(file)
             .map(|m| Mmap { mmap: m })
-            .chain_err(|| "Could not create memory map from file")
+            .map_err(|e| e.into())
     }
 
     /// Creates a memory map from a given path.
@@ -65,7 +65,7 @@ impl Mmap {
         let file = File::open(&path)?;
         memmap::Mmap::map(&file)
             .map(|m| Mmap { mmap: m })
-            .chain_err(|| format!("Could not create memory map from path {}", path.as_ref().display()))
+            .map_err(|e| e.into())
     }
 
     /// Returns an iterator over the blobs in this memory map.
@@ -90,7 +90,7 @@ impl<'a> MmapBlob<'a> {
     /// `PrimitiveBlock`). This operation might involve an expensive decompression step.
     pub fn decode(&'a self) -> Result<BlobDecode<'a>> {
         let blob: fileformat::Blob = parse_message_from_bytes(self.data)
-            .chain_err(|| "failed to parse Blob")?;
+            .map_err(|e| new_protobuf_error(e, "blob content"))?;
         match self.header.get_field_type() {
             "OSMHeader" => {
                 let block = Box::new(HeaderBlock::new(decode_blob(&blob)?));
@@ -139,7 +139,7 @@ impl<'a> MmapBlobReader<'a> {
     /// ```
     pub fn new(mmap: &Mmap) -> MmapBlobReader {
         MmapBlobReader {
-            mmap: mmap,
+            mmap,
             offset: 0,
             last_blob_ok: true,
         }
@@ -156,10 +156,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             0 => return None,
             1 ... 3 => {
                 self.last_blob_ok = false;
-                let io_error = ::std::io::Error::new(
-                    ::std::io::ErrorKind::UnexpectedEof, "failed to parse blob header length"
-                );
-                return Some(Err(Error::from_kind(ErrorKind::Io(io_error))));
+                return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
             },
             _ => {},
         }
@@ -168,7 +165,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
 
         if header_size as u64 >= ::blob::MAX_BLOB_HEADER_SIZE {
             self.last_blob_ok = false;
-            return Some(Err(ErrorKind::BlobHeaderTooBig(header_size as u64).into()));
+            return Some(Err(new_blob_error(BlobError::HeaderTooBig{size: header_size as u64})));
         }
 
         if slice.len() < 4 + header_size {
@@ -176,14 +173,14 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             let io_error = ::std::io::Error::new(
                 ::std::io::ErrorKind::UnexpectedEof, "content too short for header"
             );
-            return Some(Err(Error::from_kind(ErrorKind::Io(io_error))));
+            return Some(Err(io_error.into()));
         }
 
         let header: BlobHeader = match parse_message_from_bytes(&slice[4..(4 + header_size)]) {
             Ok(x) => x,
             Err(e) => {
                 self.last_blob_ok = false;
-                return Some(Err(e));
+                return Some(Err(new_protobuf_error(e, "blob header")));
             },
         };
 
@@ -195,13 +192,13 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             let io_error = ::std::io::Error::new(
                 ::std::io::ErrorKind::UnexpectedEof, "content too short for block data"
             );
-            return Some(Err(Error::from_kind(ErrorKind::Io(io_error))));
+            return Some(Err(io_error.into()));
         }
 
         self.offset += chunk_size;
 
         Some(Ok(MmapBlob {
-            header: header,
+            header,
             data: &slice[(4 + header_size)..chunk_size]
         }))
     }

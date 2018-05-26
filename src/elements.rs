@@ -1,6 +1,6 @@
 //! Nodes, ways and relations
 
-use errors::*;
+use error::Result;
 use block::str_from_stringtable;
 use dense::DenseNode;
 use proto::osmformat::PrimitiveBlock;
@@ -36,8 +36,8 @@ pub struct Node<'a> {
 impl<'a> Node<'a> {
     pub(crate) fn new(block: &'a PrimitiveBlock, osmnode: &'a osmformat::Node) -> Node<'a> {
         Node {
-            block: block,
-            osmnode: osmnode,
+            block,
+            osmnode,
         }
     }
 
@@ -130,8 +130,8 @@ pub struct Way<'a> {
 impl<'a> Way<'a> {
     pub(crate) fn new(block: &'a PrimitiveBlock, osmway: &'a osmformat::Way) -> Way<'a> {
         Way {
-            block: block,
-            osmway: osmway,
+            block,
+            osmway,
         }
     }
 
@@ -222,8 +222,8 @@ pub struct Relation<'a> {
 impl<'a> Relation<'a> {
     pub(crate) fn new(block: &'a PrimitiveBlock, osmrel: &'a osmformat::Relation) -> Relation<'a> {
         Relation {
-            block: block,
-            osmrel: osmrel,
+            block,
+            osmrel,
         }
     }
 
@@ -372,7 +372,7 @@ pub struct RelMemberIter<'a> {
 impl<'a> RelMemberIter<'a> {
     fn new(block: &'a PrimitiveBlock, osmrel: &'a osmformat::Relation) -> RelMemberIter<'a> {
         RelMemberIter {
-            block: block,
+            block,
             role_sids: osmrel.get_roles_sid().iter(),
             member_id_deltas: osmrel.get_memids().iter(),
             member_types: osmrel.get_types().iter(),
@@ -479,8 +479,8 @@ pub struct Info<'a> {
 impl<'a> Info<'a> {
     fn new(block: &'a PrimitiveBlock, info: &'a osmformat::Info) -> Info<'a> {
         Info {
-            block: block,
-            info: info,
+            block,
+            info,
         }
     }
 

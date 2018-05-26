@@ -2,7 +2,7 @@
 
 use dense::DenseNodeIter;
 use elements::{Element, Node, Way, Relation};
-use errors::*;
+use error::{ErrorKind, Result, new_error};
 use proto::osmformat;
 use std;
 
@@ -15,7 +15,7 @@ pub struct HeaderBlock {
 
 impl HeaderBlock {
     pub(crate) fn new(header: osmformat::HeaderBlock) -> HeaderBlock {
-        HeaderBlock { header: header }
+        HeaderBlock { header }
     }
 
     /// Returns a list of required features that a parser needs to implement to parse the following
@@ -38,7 +38,7 @@ pub struct PrimitiveBlock {
 
 impl PrimitiveBlock {
     pub(crate) fn new(block: osmformat::PrimitiveBlock) -> PrimitiveBlock {
-        PrimitiveBlock { block: block }
+        PrimitiveBlock { block }
     }
 
     /// Returns an iterator over the elements in this `PrimitiveBlock`.
@@ -92,8 +92,8 @@ impl<'a> PrimitiveGroup<'a> {
            group: &'a osmformat::PrimitiveGroup)
           -> PrimitiveGroup<'a> {
         PrimitiveGroup {
-            block: block,
-            group: group,
+            block,
+            group,
         }
     }
 
@@ -142,7 +142,7 @@ enum ElementsIterState {
 impl<'a> BlockElementsIter<'a> {
     fn new(block: &'a osmformat::PrimitiveBlock) -> BlockElementsIter<'a> {
         BlockElementsIter {
-            block: block,
+            block,
             state: ElementsIterState::Group,
             groups: block.get_primitivegroup().iter(),
             dense_nodes: DenseNodeIter::empty(block),
@@ -240,7 +240,7 @@ pub struct GroupIter<'a> {
 impl<'a> GroupIter<'a> {
     fn new(block: &'a osmformat::PrimitiveBlock) -> GroupIter<'a> {
         GroupIter {
-            block: block,
+            block,
             groups: block.get_primitivegroup().iter(),
         }
     }
@@ -275,7 +275,7 @@ impl<'a> GroupNodeIter<'a> {
            group: &'a osmformat::PrimitiveGroup)
           -> GroupNodeIter<'a> {
         GroupNodeIter {
-            block: block,
+            block,
             nodes: group.get_nodes().iter(),
         }
     }
@@ -310,7 +310,7 @@ impl<'a> GroupWayIter<'a> {
            group: &'a osmformat::PrimitiveGroup)
           -> GroupWayIter<'a> {
         GroupWayIter {
-            block: block,
+            block,
             ways: group.get_ways().iter(),
         }
     }
@@ -345,7 +345,7 @@ impl<'a> GroupRelationIter<'a> {
            group: &'a osmformat::PrimitiveGroup)
           -> GroupRelationIter<'a> {
         GroupRelationIter {
-            block: block,
+            block,
             rels: group.get_relations().iter(),
         }
     }
@@ -370,9 +370,10 @@ impl<'a> ExactSizeIterator for GroupRelationIter<'a> {}
 
 pub(crate) fn str_from_stringtable(block: &osmformat::PrimitiveBlock, index: usize) -> Result<&str> {
     if let Some(vec) = block.get_stringtable().get_s().get(index) {
+        //TODO at location to ErrorKind::Utf8
         std::str::from_utf8(vec)
-            .chain_err(|| "failed to decode string from string table")
+            .map_err(|e| new_error(ErrorKind::Utf8(e)))
     } else {
-        Err(ErrorKind::StringtableIndexOutOfBounds(index).into())
+        Err(new_error(ErrorKind::StringtableIndexOutOfBounds{index}))
     }
 }

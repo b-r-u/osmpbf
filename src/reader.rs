@@ -2,7 +2,7 @@
 
 use blob::{BlobDecode, BlobReader};
 use elements::Element;
-use errors::*;
+use error::Result;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{BufReader, Read};

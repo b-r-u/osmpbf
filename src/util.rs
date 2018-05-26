@@ -1,8 +1,8 @@
-use errors::*;
+use protobuf::ProtobufError;
 use std::io::Read;
 
 
-pub(crate) fn parse_message_from_bytes<M>(bytes: &[u8]) -> Result<M>
+pub(crate) fn parse_message_from_bytes<M>(bytes: &[u8]) -> Result<M, ProtobufError>
     where M: ::protobuf::Message
 {
     let mut stream = ::protobuf::CodedInputStream::from_bytes(bytes);
@@ -12,11 +12,11 @@ pub(crate) fn parse_message_from_bytes<M>(bytes: &[u8]) -> Result<M>
     if message.is_initialized() {
         Ok(message)
     } else {
-        Err(::protobuf::ProtobufError::message_not_initialized("").into())
+        Err(::protobuf::ProtobufError::message_not_initialized(""))
     }
 }
 
-pub(crate) fn parse_message_from_reader<R, M>(reader: &mut R) -> Result<M>
+pub(crate) fn parse_message_from_reader<R, M>(reader: &mut R) -> Result<M, ProtobufError>
     where R: Read,
           M: ::protobuf::Message,
 {
@@ -29,6 +29,6 @@ pub(crate) fn parse_message_from_reader<R, M>(reader: &mut R) -> Result<M>
     if message.is_initialized() {
         Ok(message)
     } else {
-        Err(::protobuf::ProtobufError::message_not_initialized("").into())
+        Err(::protobuf::ProtobufError::message_not_initialized(""))
     }
 }

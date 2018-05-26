@@ -1,11 +1,9 @@
 // Count the number of nodes, ways and relations in a PBF file given as the
 // first command line argument.
 
-extern crate error_chain;
 extern crate osmpbf;
 
 use osmpbf::*;
-use error_chain::ChainedError;
 
 fn main() {
     let arg = std::env::args_os().nth(1).expect("need a *.osm.pbf file as argument");
@@ -31,7 +29,7 @@ fn main() {
             println!("Relations: {}", relations);
         },
         Err(e) => {
-            println!("{}", e.display_chain().to_string());
+            println!("{}", e);
         },
     }
 }

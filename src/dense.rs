@@ -1,6 +1,6 @@
 //! Iterate over the dense nodes in a `PrimitiveGroup`
 
-use errors::*;
+use error::Result;
 use proto::osmformat;
 use block::str_from_stringtable;
 use std;
@@ -90,7 +90,7 @@ impl<'a> DenseNodeIter<'a> {
            osmdense: &'a osmformat::DenseNodes) -> DenseNodeIter<'a> {
         let info = osmdense.get_denseinfo();
         DenseNodeIter {
-            block: block,
+            block,
             dids: osmdense.get_id().iter(),
             cid: 0,
             versions: info.get_version().iter(),
@@ -113,7 +113,7 @@ impl<'a> DenseNodeIter<'a> {
 
     pub(crate) fn empty(block: &'a osmformat::PrimitiveBlock) -> DenseNodeIter<'a> {
         DenseNodeIter {
-            block: block,
+            block,
             dids: [].iter(),
             cid: 0,
             versions: [].iter(),

@@ -75,8 +75,6 @@ extern crate byteorder;
 extern crate memmap;
 extern crate protobuf;
 extern crate rayon;
-#[macro_use]
-extern crate error_chain;
 
 #[cfg(feature = "system-libz")]
 extern crate flate2;
@@ -89,11 +87,11 @@ pub use blob::*;
 pub use block::*;
 pub use dense::*;
 pub use elements::*;
-pub use errors::{Error, ErrorKind, Result, ResultExt};
+pub use error::{Error, ErrorKind, Result};
 pub use mmap_blob::*;
 pub use reader::*;
 
-mod errors;
+mod error;
 mod proto;
 pub mod reader;
 pub mod blob;
