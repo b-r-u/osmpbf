@@ -87,7 +87,7 @@ pub use blob::*;
 pub use block::*;
 pub use dense::*;
 pub use elements::*;
-pub use error::{Error, ErrorKind, Result};
+pub use error::{BlobError, Error, ErrorKind, Result};
 pub use mmap_blob::*;
 pub use reader::*;
 

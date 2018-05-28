@@ -370,9 +370,8 @@ impl<'a> ExactSizeIterator for GroupRelationIter<'a> {}
 
 pub(crate) fn str_from_stringtable(block: &osmformat::PrimitiveBlock, index: usize) -> Result<&str> {
     if let Some(vec) = block.get_stringtable().get_s().get(index) {
-        //TODO at location to ErrorKind::Utf8
         std::str::from_utf8(vec)
-            .map_err(|e| new_error(ErrorKind::Utf8(e)))
+            .map_err(|e| new_error(ErrorKind::StringtableUtf8{err: e, index}))
     } else {
         Err(new_error(ErrorKind::StringtableIndexOutOfBounds{index}))
     }

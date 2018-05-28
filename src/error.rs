@@ -43,10 +43,16 @@ impl Error {
 /// The specific type of an error.
 #[derive(Debug)]
 pub enum ErrorKind {
+    /// An error for I/O operations.
     Io(io::Error),
+    /// An error that occurs when decoding a protobuf message.
     Protobuf{err: ProtobufError, location: &'static str},
-    Utf8(Utf8Error),
+    /// The stringtable contains an entry at `index` that could not be decoded to a valid UTF-8
+    /// string.
+    StringtableUtf8{err: Utf8Error, index: usize},
+    /// An element contains an out-of-bounds index to the stringtable.
     StringtableIndexOutOfBounds{index: usize},
+    /// An error that occurs when decoding `Blob`s.
     Blob(BlobError),
 
     //TODO add UnexpectedPrimitiveBlock
@@ -63,9 +69,19 @@ pub enum ErrorKind {
 /// An error that occurs when decoding a blob.
 #[derive(Debug)]
 pub enum BlobError {
+    /// Header size could not be decoded to a u32.
     InvalidHeaderSize,
-    HeaderTooBig{size: u64},
-    MessageTooBig{size: u64},
+    /// Blob header is bigger than [`MAX_BLOB_HEADER_SIZE`](blob/MAX_BLOB_HEADER_SIZE.v.html).
+    HeaderTooBig{
+        /// Blob header size in bytes.
+        size: u64
+    },
+    /// Blob content is bigger than [`MAX_BLOB_MESSAGE_SIZE`](blob/MAX_BLOB_MESSAGE_SIZE.v.html).
+    MessageTooBig{
+        /// Blob content size in bytes.
+        size: u64
+    },
+    /// The blob is empty because the `raw` and `zlib-data` fields are missing.
     Empty,
     /// Hints that destructuring should not be exhaustive.
     #[doc(hidden)]
@@ -90,7 +106,7 @@ impl StdError for Error {
         match *self.0 {
             ErrorKind::Io(ref err) => err.description(),
             ErrorKind::Protobuf{ref err, ..} => err.description(),
-            ErrorKind::Utf8(ref err) => err.description(),
+            ErrorKind::StringtableUtf8{ref err, ..} => err.description(),
             ErrorKind::StringtableIndexOutOfBounds{..} => "stringtable index out of bounds",
             ErrorKind::Blob(BlobError::InvalidHeaderSize) => "blob header size could not be decoded",
             ErrorKind::Blob(BlobError::HeaderTooBig{..}) => "blob header is too big",
@@ -104,7 +120,7 @@ impl StdError for Error {
         match *self.0 {
             ErrorKind::Io(ref err) => Some(err),
             ErrorKind::Protobuf{ref err, ..} => Some(err),
-            ErrorKind::Utf8(ref err) => Some(err),
+            ErrorKind::StringtableUtf8{ref err, ..} => Some(err),
             ErrorKind::StringtableIndexOutOfBounds{..} => None,
             ErrorKind::Blob(BlobError::InvalidHeaderSize) => None,
             ErrorKind::Blob(BlobError::HeaderTooBig{..}) => None,
@@ -122,7 +138,9 @@ impl fmt::Display for Error {
             ErrorKind::Protobuf{ref err, location} => {
                 write!(f, "protobuf error at '{}': {}", location, err)
             },
-            ErrorKind::Utf8(ref err) => err.fmt(f),
+            ErrorKind::StringtableUtf8{ref err, index} => {
+                write!(f, "invalid UTF-8 at string table index {}: {}", index, err)
+            }
             ErrorKind::StringtableIndexOutOfBounds { index } => {
                 write!(f, "stringtable index out of bounds: {}", index)
             },
