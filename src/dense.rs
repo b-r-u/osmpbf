@@ -53,10 +53,20 @@ impl<'a> DenseNode<'a> {
         self.timestamp * i64::from(self.block.get_date_granularity())
     }
 
-    /// Returns an iterator over the tags of this way (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// Returns an iterator over the tags of this node (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
     pub fn tags(&self) -> DenseTagIter<'a> {
         DenseTagIter {
             block: self.block,
+            keys_vals_indices: self.keys_vals_indices.iter(),
+        }
+    }
+
+    /// Returns an iterator over the tags of this node
+    /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
+    /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
+    /// `PrimitiveBlock`.
+    pub fn raw_tags(&self) -> DenseRawTagIter<'a> {
+        DenseRawTagIter {
             keys_vals_indices: self.keys_vals_indices.iter(),
         }
     }
@@ -228,8 +238,35 @@ impl<'a> Iterator for DenseTagIter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.keys_vals_indices.size_hint()
+        let len = self.keys_vals_indices.len() / 2;
+        (len, Some(len))
     }
 }
 
 impl<'a> ExactSizeIterator for DenseTagIter<'a> {}
+
+/// An iterator over the tags of a node. It returns a pair of indices (key and value) to the
+/// stringtable of the current `PrimitiveBlock`.
+#[derive(Clone, Debug)]
+pub struct DenseRawTagIter<'a> {
+    keys_vals_indices: std::slice::Iter<'a, i32>,
+}
+
+//TODO return Result
+impl<'a> Iterator for DenseRawTagIter<'a> {
+    type Item = (i32, i32);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match (self.keys_vals_indices.next(), self.keys_vals_indices.next()) {
+            (Some(&key_index), Some(&val_index)) => Some((key_index, val_index)),
+            _ => None,
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.keys_vals_indices.len() / 2;
+        (len, Some(len))
+    }
+}
+
+impl<'a> ExactSizeIterator for DenseRawTagIter<'a> {}
