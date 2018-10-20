@@ -36,4 +36,7 @@ build: false
 
 test_script:
   - cargo test --verbose
-  - cargo test --verbose --no-default-features
+  - ps: >-
+        If ($Env:CHANNEL -nq '1.23.0') {
+          cargo test --verbose --no-default-features;
+        }

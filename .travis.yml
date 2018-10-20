@@ -9,5 +9,5 @@ rust:
   - 1.23.0
 script:
   - cargo test --verbose
-  - cargo test --verbose --no-default-features
+  - if [ "$TRAVIS_RUST_VERSION" != "1.23.0" ]; then cargo test --verbose --no-default-features; fi
   - cargo doc --verbose
