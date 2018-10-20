@@ -8,14 +8,19 @@ environment:
   matrix:
     - channel: nightly
       target: x86_64-pc-windows-msvc
+      cargoflags: --no-default-features
     - channel: nightly
       target: x86_64-pc-windows-gnu
+      cargoflags: --no-default-features
     - channel: nightly
       target: i686-pc-windows-gnu
+      cargoflags: --no-default-features
     - channel: stable
       target: x86_64-pc-windows-msvc
+      cargoflags: --no-default-features
     - channel: stable
       target: i686-pc-windows-msvc
+      cargoflags: --no-default-features
     - channel: 1.23.0
       target: x86_64-pc-windows-msvc
 
@@ -36,7 +41,4 @@ build: false
 
 test_script:
   - cargo test --verbose
-  - ps: >-
-        If ($Env:CHANNEL -nq '1.23.0') {
-          cargo test --verbose --no-default-features;
-        }
+  - cargo test --verbose %cargoflags%

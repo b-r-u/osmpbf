@@ -8,6 +8,12 @@ rust:
   - nightly
   - 1.23.0
 script:
-  - cargo test --verbose
-  - if [ "$TRAVIS_RUST_VERSION" != "1.23.0" ]; then cargo test --verbose --no-default-features; fi
-  - cargo doc --verbose
+  - |
+      if [ "$TRAVIS_RUST_VERSION" == "1.23.0" ];
+        cargo test --verbose;
+        cargo doc --verbose --no-deps;
+      then
+        cargo test --verbose;
+        cargo test --verbose --no-default-features;
+        cargo doc --verbose;
+      fi
