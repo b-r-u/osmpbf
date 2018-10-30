@@ -8,7 +8,7 @@ use byteorder::ReadBytesExt;
 use error::{BlobError, Result, new_blob_error, new_protobuf_error};
 use proto::fileformat;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use util::{parse_message_from_bytes, parse_message_from_reader};
 
@@ -51,6 +51,10 @@ pub enum BlobDecode<'a> {
     Unknown(&'a str),
 }
 
+/// The offset of a blob in bytes from stream start.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ByteOffset(pub u64);
+
 /// A blob.
 ///
 /// A PBF file consists of a sequence of blobs. This type supports decoding the content of a blob
@@ -59,13 +63,19 @@ pub enum BlobDecode<'a> {
 pub struct Blob {
     header: fileformat::BlobHeader,
     blob: fileformat::Blob,
+    offset: Option<ByteOffset>,
 }
 
 impl Blob {
-    fn new(header: fileformat::BlobHeader, blob: fileformat::Blob) -> Blob {
+    fn new(
+        header: fileformat::BlobHeader,
+        blob: fileformat::Blob,
+        offset: Option<ByteOffset>,
+    ) -> Blob {
         Blob {
             header,
-            blob
+            blob,
+            offset,
         }
     }
 
@@ -95,6 +105,12 @@ impl Blob {
         }
     }
 
+    /// Returns the byte offset of the blob from the start of its source stream.
+    /// This might be `None` if the source stream does not implement `Seek`.
+    pub fn offset(&self) -> Option<ByteOffset> {
+        self.offset
+    }
+
     /// Tries to decode the blob to a `HeaderBlock`. This operation might involve an expensive
     /// decompression step.
     pub fn to_headerblock(&self) -> Result<HeaderBlock> {
@@ -114,11 +130,13 @@ impl Blob {
 #[derive(Clone, Debug)]
 pub struct BlobReader<R: Read> {
     reader: R,
+    /// Current reader offset in bytes from the start of the stream.
+    offset: Option<ByteOffset>,
     last_blob_ok: bool,
 }
 
 impl<R: Read> BlobReader<R> {
-    /// Creates a new `ElementReader`.
+    /// Creates a new `BlobReader`.
     ///
     /// # Example
     /// ```
@@ -128,7 +146,7 @@ impl<R: Read> BlobReader<R> {
     /// let f = std::fs::File::open("tests/test.osm.pbf")?;
     /// let buf_reader = std::io::BufReader::new(f);
     ///
-    /// let reader = ElementReader::new(buf_reader);
+    /// let reader = BlobReader::new(buf_reader);
     ///
     /// # Ok(())
     /// # }
@@ -136,6 +154,7 @@ impl<R: Read> BlobReader<R> {
     pub fn new(reader: R) -> BlobReader<R> {
         BlobReader {
             reader,
+            offset: None,
             last_blob_ok: true,
         }
     }
@@ -161,7 +180,11 @@ impl BlobReader<BufReader<File>> {
         let f = File::open(path)?;
         let reader = BufReader::new(f);
 
-        Ok(BlobReader::new(reader))
+        Ok(BlobReader {
+            reader,
+            offset: Some(ByteOffset(0)),
+            last_blob_ok: true,
+        })
     }
 }
 
@@ -174,9 +197,15 @@ impl<R: Read> Iterator for BlobReader<R> {
             return None;
         }
 
+        let prev_offset = self.offset;
+
         let header_size: u64 = match self.reader.read_u32::<byteorder::BigEndian>() {
-            Ok(n) => u64::from(n),
+            Ok(n) => {
+                self.offset = self.offset.map(|x| ByteOffset(x.0 + 4));
+                u64::from(n)
+            },
             Err(e) => {
+                self.offset = None;
                 match e.kind() {
                     ::std::io::ErrorKind::UnexpectedEof => {
                         //TODO This also accepts corrupted files in the case of 1-3 available bytes
@@ -198,6 +227,7 @@ impl<R: Read> Iterator for BlobReader<R> {
         let header: fileformat::BlobHeader = match parse_message_from_reader(&mut self.reader.by_ref().take(header_size)) {
             Ok(header) => header,
             Err(e) => {
+                self.offset = None;
                 self.last_blob_ok = false;
                 return Some(Err(new_protobuf_error(e, "blob header")));
             },
@@ -206,12 +236,92 @@ impl<R: Read> Iterator for BlobReader<R> {
         let blob: fileformat::Blob = match parse_message_from_reader(&mut self.reader.by_ref().take(header.get_datasize() as u64)) {
             Ok(blob) => blob,
             Err(e) => {
+                self.offset = None;
                 self.last_blob_ok = false;
                 return Some(Err(new_protobuf_error(e, "blob content")));
             },
         };
 
-        Some(Ok(Blob::new(header, blob)))
+        self.offset = self.offset.map(|x| ByteOffset(
+            x.0 + header_size + header.get_datasize() as u64
+        ));
+
+        Some(Ok(Blob::new(header, blob, prev_offset)))
+    }
+}
+
+impl<R: Read + Seek> BlobReader<R> {
+    /// Creates a new `BlobReader` from the given reader that is seekable and will be initialized
+    /// with a valid offset.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let f = std::fs::File::open("tests/test.osm.pbf")?;
+    /// let buf_reader = std::io::BufReader::new(f);
+    ///
+    /// let mut reader = BlobReader::new_seekable(buf_reader)?;
+    /// let first_blob = reader.next().unwrap()?;
+    ///
+    /// assert_eq!(first_blob.offset(), Some(ByteOffset(1)));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn new_seekable(mut reader: R) -> Result<BlobReader<R>> {
+        let pos = reader.seek(SeekFrom::Current(0))?;
+
+        Ok(BlobReader {
+            reader,
+            offset: Some(ByteOffset(pos)),
+            last_blob_ok: true,
+        })
+    }
+
+    /// Seek to an offset in bytes from the start of the stream.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let mut reader = BlobReader::from_path("tests/test.osm.pbf")?;
+    /// let first_blob = reader.next().unwrap()?;
+    /// let second_blob = reader.next().unwrap()?;
+    ///
+    /// reader.seek(first_blob.offset().unwrap())?;
+    ///
+    /// let first_blob_again = reader.next().unwrap()?;
+    /// assert_eq!(first_blob.offset(), first_blob_again.offset());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn seek(&mut self, pos: ByteOffset) -> Result<()> {
+        match self.reader.seek(SeekFrom::Start(pos.0)) {
+            Ok(offset) => {
+                self.offset = Some(ByteOffset(offset));
+                Ok(())
+            },
+            Err(e) => {
+                self.offset = None;
+                Err(e.into())
+            },
+        }
+    }
+
+    /// Seek to an offset in bytes. (See `std::io::Seek`)
+    pub fn seek_raw(&mut self, pos: SeekFrom) -> Result<u64> {
+        match self.reader.seek(pos) {
+            Ok(offset) => {
+                self.offset = Some(ByteOffset(offset));
+                Ok(offset)
+            },
+            Err(e) => {
+                self.offset = None;
+                Err(e.into())
+            },
+        }
     }
 }
 
