@@ -4,7 +4,7 @@ extern crate protobuf;
 extern crate byteorder;
 extern crate memmap;
 
-use blob::{BlobDecode, BlobType, decode_blob};
+use blob::{BlobDecode, ByteOffset, BlobType, decode_blob};
 use block::{HeaderBlock, PrimitiveBlock};
 use byteorder::ByteOrder;
 use error::{BlobError, Result, new_blob_error, new_protobuf_error};
@@ -83,6 +83,7 @@ impl Mmap {
 pub struct MmapBlob<'a> {
     header: BlobHeader,
     data: &'a [u8],
+    offset: ByteOffset,
 }
 
 impl<'a> MmapBlob<'a> {
@@ -111,6 +112,11 @@ impl<'a> MmapBlob<'a> {
             "OSMData" => BlobType::OsmData,
             x => BlobType::Unknown(x),
         }
+    }
+
+    /// Returns the byte offset of the blob from the start of its memory map.
+    pub fn offset(&self) -> ByteOffset {
+        self.offset
     }
 }
 
@@ -143,6 +149,32 @@ impl<'a> MmapBlobReader<'a> {
             offset: 0,
             last_blob_ok: true,
         }
+    }
+
+    /// Move the cursor to the given byte offset.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    ///
+    /// let mmap = unsafe { Mmap::from_path("tests/test.osm.pbf")? };
+    /// let mut reader = MmapBlobReader::new(&mmap);
+    ///
+    /// let first_blob = reader.next().unwrap()?;
+    /// let second_blob = reader.next().unwrap()?;
+    ///
+    /// reader.seek(first_blob.offset());
+    /// let first_blob_again = reader.next().unwrap()?;
+    ///
+    /// assert_eq!(first_blob.offset(), first_blob_again.offset());
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn seek(&mut self, pos: ByteOffset) {
+        self.offset = pos.0 as usize;
     }
 }
 
@@ -195,11 +227,13 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             return Some(Err(io_error.into()));
         }
 
+        let prev_offset = self.offset;
         self.offset += chunk_size;
 
         Some(Ok(MmapBlob {
             header,
-            data: &slice[(4 + header_size)..chunk_size]
+            data: &slice[(4 + header_size)..chunk_size],
+            offset: ByteOffset(prev_offset as u64),
         }))
     }
 }
