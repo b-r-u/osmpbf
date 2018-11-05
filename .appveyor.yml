@@ -21,7 +21,7 @@ environment:
     - channel: stable
       target: i686-pc-windows-msvc
       cargoflags: --no-default-features
-    - channel: 1.23.0
+    - channel: 1.24.1
       target: x86_64-pc-windows-msvc
 
 install:
