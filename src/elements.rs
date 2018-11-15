@@ -120,7 +120,7 @@ impl<'a> Node<'a> {
 /// An OpenStreetMap way element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Way)).
 ///
 /// A way contains an ordered list of node references that can be accessed with the `refs` or the
-/// `refs_slice` method.
+/// `raw_refs` method.
 #[derive(Clone, Debug)]
 pub struct Way<'a> {
     block: &'a PrimitiveBlock,
@@ -184,8 +184,8 @@ impl<'a> Way<'a> {
         }
     }
 
-    /// Returns a slice of references. Each reference should correspond to a node id.
-    pub fn refs_slice(&self) -> &[i64] {
+    /// Returns a slice of delta coded node ids.
+    pub fn raw_refs(&self) -> &[i64] {
         self.osmway.get_refs()
     }
 
