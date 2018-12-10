@@ -30,6 +30,7 @@ impl<R: Read> ElementReader<R> {
     ///
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn new(reader: R) -> ElementReader<R> {
         ElementReader {
@@ -62,6 +63,7 @@ impl<R: Read> ElementReader<R> {
     ///
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn for_each<F>(self, mut f: F) -> Result<()>
         where F: for<'a> FnMut(Element<'a>) {
@@ -114,6 +116,7 @@ impl<R: Read> ElementReader<R> {
     /// println!("Number of ways: {}", ways);
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn par_map_reduce<MP, RD, ID, T>(self, map_op: MP, identity: ID, reduce_op: RD) -> Result<T>
         where MP: for<'a> Fn(Element<'a>) -> T + Sync + Send,
@@ -158,6 +161,7 @@ impl ElementReader<BufReader<File>> {
     /// let reader = ElementReader::from_path("tests/test.osm.pbf")?;
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self>
     {

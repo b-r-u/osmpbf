@@ -38,6 +38,7 @@ impl Mmap {
     /// let mmap = unsafe { Mmap::from_file(&f)? };
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub unsafe fn from_file(file: &File) -> Result<Mmap> {
         memmap::Mmap::map(file)
@@ -60,6 +61,7 @@ impl Mmap {
     /// let mmap = unsafe { Mmap::from_path("tests/test.osm.pbf")? };
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub unsafe fn from_path<P: AsRef<Path>>(path: P) -> Result<Mmap> {
         let file = File::open(&path)?;
@@ -142,6 +144,7 @@ impl<'a> MmapBlobReader<'a> {
     ///
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn new(mmap: &Mmap) -> MmapBlobReader {
         MmapBlobReader {
@@ -172,6 +175,7 @@ impl<'a> MmapBlobReader<'a> {
     ///
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn seek(&mut self, pos: ByteOffset) {
         self.offset = pos.0 as usize;

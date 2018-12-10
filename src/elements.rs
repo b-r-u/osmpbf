@@ -68,6 +68,7 @@ impl<'a> Node<'a> {
     ///
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
@@ -161,6 +162,7 @@ impl<'a> Way<'a> {
     ///
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
@@ -253,6 +255,7 @@ impl<'a> Relation<'a> {
     ///
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {

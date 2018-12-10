@@ -150,6 +150,7 @@ impl<R: Read> BlobReader<R> {
     ///
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn new(reader: R) -> BlobReader<R> {
         BlobReader {
@@ -174,6 +175,7 @@ impl BlobReader<BufReader<File>> {
     /// let reader = BlobReader::from_path("tests/test.osm.pbf")?;
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self>
     {
@@ -265,9 +267,10 @@ impl<R: Read + Seek> BlobReader<R> {
     /// let mut reader = BlobReader::new_seekable(buf_reader)?;
     /// let first_blob = reader.next().unwrap()?;
     ///
-    /// assert_eq!(first_blob.offset(), Some(ByteOffset(1)));
+    /// assert_eq!(first_blob.offset(), Some(ByteOffset(0)));
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn new_seekable(mut reader: R) -> Result<BlobReader<R>> {
         let pos = reader.seek(SeekFrom::Current(0))?;
@@ -296,6 +299,7 @@ impl<R: Read + Seek> BlobReader<R> {
     /// assert_eq!(first_blob.offset(), first_blob_again.offset());
     /// # Ok(())
     /// # }
+    /// # foo().unwrap();
     /// ```
     pub fn seek(&mut self, pos: ByteOffset) -> Result<()> {
         match self.reader.seek(SeekFrom::Start(pos.0)) {
