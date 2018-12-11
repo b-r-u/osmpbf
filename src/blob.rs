@@ -329,6 +329,30 @@ impl<R: Read + Seek> BlobReader<R> {
     }
 }
 
+impl BlobReader<BufReader<File>> {
+    /// Creates a new `BlobReader` from the given path that is seekable and will be initialized
+    /// with a valid offset.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let mut reader = BlobReader::seekable_from_path("tests/test.osm.pbf")?;
+    /// let first_blob = reader.next().unwrap()?;
+    ///
+    /// assert_eq!(first_blob.offset(), Some(ByteOffset(0)));
+    /// # Ok(())
+    /// # }
+    /// # foo().unwrap();
+    /// ```
+    pub fn seekable_from_path<P: AsRef<Path>>(path: P) -> Result<BlobReader<BufReader<File>>> {
+        let f = File::open(path.as_ref())?;
+        let buf_reader = BufReader::new(f);
+        Self::new_seekable(buf_reader)
+    }
+}
+
 #[cfg(feature = "system-libz")]
 pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
     where T: protobuf::Message {
