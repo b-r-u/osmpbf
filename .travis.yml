@@ -6,10 +6,10 @@ rust:
   - stable
   - beta
   - nightly
-  - 1.24.1
+  - 1.26.2
 script:
   - |
-      if [ "$TRAVIS_RUST_VERSION" == "1.24.1" ]; then
+      if [ "$TRAVIS_RUST_VERSION" == "1.26.2" ]; then
         cargo test --verbose;
         cargo doc --verbose --no-deps;
       else
