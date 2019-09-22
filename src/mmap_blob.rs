@@ -190,7 +190,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
 
         match slice.len() {
             0 => return None,
-            1 ... 3 => {
+            1 ..= 3 => {
                 self.last_blob_ok = false;
                 return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
             },
