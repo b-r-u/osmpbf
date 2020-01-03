@@ -46,7 +46,6 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
         assert_eq!(nodes[2].nano_lon(), 11631019200);
         assert_eq!(nodes[2].decimicro_lon(), 116310192);
 
-
         assert_eq!(nodes[0].id(), 105);
         assert_eq!(nodes[1].id(), 106);
         assert_eq!(nodes[2].id(), 108);
