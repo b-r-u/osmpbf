@@ -28,11 +28,24 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
     if !nodes.is_empty() {
         assert_eq!(nodes.len(), 3);
 
+        // node 1 lat
         assert!(approx_eq(nodes[1].lat(), 52.11992359584));
+        assert_eq!(nodes[1].nano_lat(), 52119923500);
+        assert_eq!(nodes[1].decimicro_lat(), 521199235);
+        // node 1 lon
         assert!(approx_eq(nodes[1].lon(), 11.62564468943));
+        assert_eq!(nodes[1].nano_lon(), 11625644600);
+        assert_eq!(nodes[1].decimicro_lon(), 116256446);
 
+        // node 2 lat
         assert!(approx_eq(nodes[2].lat(), 52.11989910567));
+        assert_eq!(nodes[2].nano_lat(), 52119899100);
+        assert_eq!(nodes[2].decimicro_lat(), 521198991);
+        //node 2 lon
         assert!(approx_eq(nodes[2].lon(), 11.63101926915));
+        assert_eq!(nodes[2].nano_lon(), 11631019200);
+        assert_eq!(nodes[2].decimicro_lon(), 116310192);
+
 
         assert_eq!(nodes[0].id(), 105);
         assert_eq!(nodes[1].id(), 106);
@@ -47,11 +60,23 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
     if !dense_nodes.is_empty() {
         assert_eq!(dense_nodes.len(), 3);
 
+        // node 1 lat
         assert!(approx_eq(dense_nodes[1].lat(), 52.11992359584));
+        assert_eq!(dense_nodes[1].nano_lat(), 52119923500);
+        assert_eq!(dense_nodes[1].decimicro_lat(), 521199235);
+        //node 1 lon
         assert!(approx_eq(dense_nodes[1].lon(), 11.62564468943));
+        assert_eq!(dense_nodes[1].nano_lon(), 11625644600);
+        assert_eq!(dense_nodes[1].decimicro_lon(), 116256446);
 
+        //node 2 lat
         assert!(approx_eq(dense_nodes[2].lat(), 52.11989910567));
+        assert_eq!(dense_nodes[2].nano_lat(), 52119899100);
+        assert_eq!(dense_nodes[2].decimicro_lat(), 521198991);
+        // node 2 lon
         assert!(approx_eq(dense_nodes[2].lon(), 11.63101926915));
+        assert_eq!(dense_nodes[2].nano_lon(), 11631019200);
+        assert_eq!(dense_nodes[2].decimicro_lon(), 116310192);
 
         assert_eq!(dense_nodes[0].id, 105);
         assert_eq!(dense_nodes[1].id, 106);
