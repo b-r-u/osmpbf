@@ -152,7 +152,10 @@ impl<'a> BlockElementsIter<'a> {
         }
     }
 
+    /// Performs an internal iteration step. Returns `None` until there is a value for the iterator to
+    /// return. Returns `Some(None)` to end the iteration.
     #[inline]
+    #[allow(clippy::option_option)]
     fn step(&mut self) -> Option<Option<Element<'a>>> {
         match self.state {
             ElementsIterState::Group => {
