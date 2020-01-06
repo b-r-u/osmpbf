@@ -3,9 +3,9 @@ extern crate osmpbf;
 use osmpbf::*;
 
 static TEST_FILE_PATHS: [&str; 3] = [
-"tests/test.osm.pbf",
-"tests/test_nozlib.osm.pbf",
-"tests/test_nozlib_nodense.osm.pbf",
+    "tests/test.osm.pbf",
+    "tests/test_nozlib.osm.pbf",
+    "tests/test_nozlib_nodense.osm.pbf",
 ];
 
 fn approx_eq(a: f64, b: f64) -> bool {
@@ -191,11 +191,9 @@ fn par_read_elements() {
     for path in &TEST_FILE_PATHS {
         let reader = ElementReader::from_path(path).unwrap();
 
-        let elements = reader.par_map_reduce(
-            |_element| 1,
-            || 0_usize,
-            |a, b| a + b,
-        ).unwrap();
+        let elements = reader
+            .par_map_reduce(|_element| 1, || 0_usize, |a, b| a + b)
+            .unwrap();
 
         assert_eq!(elements, 5);
     }

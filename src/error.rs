@@ -18,7 +18,7 @@ pub(crate) fn new_blob_error(kind: BlobError) -> Error {
 }
 
 pub(crate) fn new_protobuf_error(err: ProtobufError, location: &'static str) -> Error {
-    Error(Box::new(ErrorKind::Protobuf{ err, location }))
+    Error(Box::new(ErrorKind::Protobuf { err, location }))
 }
 
 /// A type alias for `Result<T, osmpbf::Error>`.
@@ -46,17 +46,19 @@ pub enum ErrorKind {
     /// An error for I/O operations.
     Io(io::Error),
     /// An error that occurs when decoding a protobuf message.
-    Protobuf{err: ProtobufError, location: &'static str},
+    Protobuf {
+        err: ProtobufError,
+        location: &'static str,
+    },
     /// The stringtable contains an entry at `index` that could not be decoded to a valid UTF-8
     /// string.
-    StringtableUtf8{err: Utf8Error, index: usize},
+    StringtableUtf8 { err: Utf8Error, index: usize },
     /// An element contains an out-of-bounds index to the stringtable.
-    StringtableIndexOutOfBounds{index: usize},
+    StringtableIndexOutOfBounds { index: usize },
     /// An error that occurs when decoding `Blob`s.
     Blob(BlobError),
 
     //TODO add UnexpectedPrimitiveBlock
-
     /// Hints that destructuring should not be exhaustive.
     ///
     /// This enum may grow additional variants, so this makes sure clients
@@ -72,14 +74,14 @@ pub enum BlobError {
     /// Header size could not be decoded to a u32.
     InvalidHeaderSize,
     /// Blob header is bigger than [`MAX_BLOB_HEADER_SIZE`](blob/MAX_BLOB_HEADER_SIZE.v.html).
-    HeaderTooBig{
+    HeaderTooBig {
         /// Blob header size in bytes.
-        size: u64
+        size: u64,
     },
     /// Blob content is bigger than [`MAX_BLOB_MESSAGE_SIZE`](blob/MAX_BLOB_MESSAGE_SIZE.v.html).
-    MessageTooBig{
+    MessageTooBig {
         /// Blob content size in bytes.
-        size: u64
+        size: u64,
     },
     /// The blob is empty because the `raw` and `zlib-data` fields are missing.
     Empty,
@@ -87,7 +89,6 @@ pub enum BlobError {
     #[doc(hidden)]
     __Nonexhaustive,
 }
-
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
@@ -105,12 +106,14 @@ impl StdError for Error {
     fn description(&self) -> &str {
         match *self.0 {
             ErrorKind::Io(ref err) => err.description(),
-            ErrorKind::Protobuf{ref err, ..} => err.description(),
-            ErrorKind::StringtableUtf8{ref err, ..} => err.description(),
-            ErrorKind::StringtableIndexOutOfBounds{..} => "stringtable index out of bounds",
-            ErrorKind::Blob(BlobError::InvalidHeaderSize) => "blob header size could not be decoded",
-            ErrorKind::Blob(BlobError::HeaderTooBig{..}) => "blob header is too big",
-            ErrorKind::Blob(BlobError::MessageTooBig{..}) => "blob message is too big",
+            ErrorKind::Protobuf { ref err, .. } => err.description(),
+            ErrorKind::StringtableUtf8 { ref err, .. } => err.description(),
+            ErrorKind::StringtableIndexOutOfBounds { .. } => "stringtable index out of bounds",
+            ErrorKind::Blob(BlobError::InvalidHeaderSize) => {
+                "blob header size could not be decoded"
+            }
+            ErrorKind::Blob(BlobError::HeaderTooBig { .. }) => "blob header is too big",
+            ErrorKind::Blob(BlobError::MessageTooBig { .. }) => "blob message is too big",
             ErrorKind::Blob(BlobError::Empty) => "blob is missing fields 'raw' and 'zlib_data",
             _ => unreachable!(),
         }
@@ -119,12 +122,12 @@ impl StdError for Error {
     fn cause(&self) -> Option<&dyn StdError> {
         match *self.0 {
             ErrorKind::Io(ref err) => Some(err),
-            ErrorKind::Protobuf{ref err, ..} => Some(err),
-            ErrorKind::StringtableUtf8{ref err, ..} => Some(err),
-            ErrorKind::StringtableIndexOutOfBounds{..} => None,
+            ErrorKind::Protobuf { ref err, .. } => Some(err),
+            ErrorKind::StringtableUtf8 { ref err, .. } => Some(err),
+            ErrorKind::StringtableIndexOutOfBounds { .. } => None,
             ErrorKind::Blob(BlobError::InvalidHeaderSize) => None,
-            ErrorKind::Blob(BlobError::HeaderTooBig{..}) => None,
-            ErrorKind::Blob(BlobError::MessageTooBig{..}) => None,
+            ErrorKind::Blob(BlobError::HeaderTooBig { .. }) => None,
+            ErrorKind::Blob(BlobError::MessageTooBig { .. }) => None,
             ErrorKind::Blob(BlobError::Empty) => None,
             _ => unreachable!(),
         }
@@ -135,29 +138,28 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self.0 {
             ErrorKind::Io(ref err) => err.fmt(f),
-            ErrorKind::Protobuf{ref err, location} => {
+            ErrorKind::Protobuf { ref err, location } => {
                 write!(f, "protobuf error at '{}': {}", location, err)
-            },
-            ErrorKind::StringtableUtf8{ref err, index} => {
+            }
+            ErrorKind::StringtableUtf8 { ref err, index } => {
                 write!(f, "invalid UTF-8 at string table index {}: {}", index, err)
             }
             ErrorKind::StringtableIndexOutOfBounds { index } => {
                 write!(f, "stringtable index out of bounds: {}", index)
-            },
+            }
             ErrorKind::Blob(BlobError::InvalidHeaderSize) => {
                 write!(f, "blob header size could not be decoded")
-            },
+            }
             ErrorKind::Blob(BlobError::HeaderTooBig { size }) => {
                 write!(f, "blob header is too big: {} bytes", size)
-            },
+            }
             ErrorKind::Blob(BlobError::MessageTooBig { size }) => {
                 write!(f, "blob message is too big: {} bytes", size)
-            },
+            }
             ErrorKind::Blob(BlobError::Empty) => {
                 write!(f, "blob is missing fields 'raw' and 'zlib_data'")
-            },
+            }
             _ => unreachable!(),
         }
     }
 }
-

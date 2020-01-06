@@ -1,19 +1,18 @@
 //! Iterate over blobs from a memory map
 
-extern crate protobuf;
 extern crate byteorder;
 extern crate memmap;
+extern crate protobuf;
 
-use blob::{BlobDecode, ByteOffset, BlobType, decode_blob};
+use self::fileformat::BlobHeader;
+use blob::{decode_blob, BlobDecode, BlobType, ByteOffset};
 use block::{HeaderBlock, PrimitiveBlock};
 use byteorder::ByteOrder;
-use error::{BlobError, Result, new_blob_error, new_protobuf_error};
+use error::{new_blob_error, new_protobuf_error, BlobError, Result};
 use proto::{fileformat, osmformat};
-use self::fileformat::BlobHeader;
 use std::fs::File;
 use std::path::Path;
 use util::parse_message_from_bytes;
-
 
 /// A read-only memory map.
 #[derive(Debug)]
@@ -190,24 +189,27 @@ impl<'a> Iterator for MmapBlobReader<'a> {
 
         match slice.len() {
             0 => return None,
-            1 ..= 3 => {
+            1..=3 => {
                 self.last_blob_ok = false;
                 return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
-            },
-            _ => {},
+            }
+            _ => {}
         }
 
         let header_size = byteorder::BigEndian::read_u32(slice) as usize;
 
         if header_size as u64 >= ::blob::MAX_BLOB_HEADER_SIZE {
             self.last_blob_ok = false;
-            return Some(Err(new_blob_error(BlobError::HeaderTooBig{size: header_size as u64})));
+            return Some(Err(new_blob_error(BlobError::HeaderTooBig {
+                size: header_size as u64,
+            })));
         }
 
         if slice.len() < 4 + header_size {
             self.last_blob_ok = false;
             let io_error = ::std::io::Error::new(
-                ::std::io::ErrorKind::UnexpectedEof, "content too short for header"
+                ::std::io::ErrorKind::UnexpectedEof,
+                "content too short for header",
             );
             return Some(Err(io_error.into()));
         }
@@ -217,7 +219,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             Err(e) => {
                 self.last_blob_ok = false;
                 return Some(Err(new_protobuf_error(e, "blob header")));
-            },
+            }
         };
 
         let data_size = header.get_datasize() as usize;
@@ -226,7 +228,8 @@ impl<'a> Iterator for MmapBlobReader<'a> {
         if slice.len() < chunk_size {
             self.last_blob_ok = false;
             let io_error = ::std::io::Error::new(
-                ::std::io::ErrorKind::UnexpectedEof, "content too short for block data"
+                ::std::io::ErrorKind::UnexpectedEof,
+                "content too short for block data",
             );
             return Some(Err(io_error.into()));
         }

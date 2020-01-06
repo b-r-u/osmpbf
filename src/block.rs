@@ -1,11 +1,10 @@
 //! `HeaderBlock`, `PrimitiveBlock` and `PrimitiveGroup`s
 
 use dense::DenseNodeIter;
-use elements::{Element, Node, Way, Relation};
-use error::{ErrorKind, Result, new_error};
+use elements::{Element, Node, Relation, Way};
+use error::{new_error, ErrorKind, Result};
 use proto::osmformat;
 use std;
-
 
 /// A `HeaderBlock`. It contains metadata about following `PrimitiveBlock`s.
 #[derive(Clone, Debug)]
@@ -53,7 +52,8 @@ impl PrimitiveBlock {
 
     /// Calls the given closure on each element.
     pub fn for_each_element<F>(&self, mut f: F)
-        where F: for<'a> FnMut(Element<'a>)
+    where
+        F: for<'a> FnMut(Element<'a>),
     {
         for group in self.groups() {
             for node in group.nodes() {
@@ -88,13 +88,11 @@ pub struct PrimitiveGroup<'a> {
 }
 
 impl<'a> PrimitiveGroup<'a> {
-    fn new(block: &'a osmformat::PrimitiveBlock,
-           group: &'a osmformat::PrimitiveGroup)
-          -> PrimitiveGroup<'a> {
-        PrimitiveGroup {
-            block,
-            group,
-        }
+    fn new(
+        block: &'a osmformat::PrimitiveBlock,
+        group: &'a osmformat::PrimitiveGroup,
+    ) -> PrimitiveGroup<'a> {
+        PrimitiveGroup { block, group }
     }
 
     /// Returns an iterator over the nodes in this group.
@@ -136,7 +134,7 @@ enum ElementsIterState {
     DenseNode,
     Node,
     Way,
-    Relation
+    Relation,
 }
 
 impl<'a> BlockElementsIter<'a> {
@@ -158,61 +156,43 @@ impl<'a> BlockElementsIter<'a> {
     #[allow(clippy::option_option)]
     fn step(&mut self) -> Option<Option<Element<'a>>> {
         match self.state {
-            ElementsIterState::Group => {
-                match self.groups.next() {
-                    Some(group) => {
-                        self.state = ElementsIterState::DenseNode;
-                        self.dense_nodes = DenseNodeIter::new(self.block, group.get_dense());
-                        self.nodes = group.get_nodes().iter();
-                        self.ways = group.get_ways().iter();
-                        self.relations = group.get_relations().iter();
-                        None
-                    },
-                    None => Some(None),
+            ElementsIterState::Group => match self.groups.next() {
+                Some(group) => {
+                    self.state = ElementsIterState::DenseNode;
+                    self.dense_nodes = DenseNodeIter::new(self.block, group.get_dense());
+                    self.nodes = group.get_nodes().iter();
+                    self.ways = group.get_ways().iter();
+                    self.relations = group.get_relations().iter();
+                    None
+                }
+                None => Some(None),
+            },
+            ElementsIterState::DenseNode => match self.dense_nodes.next() {
+                Some(dense_node) => Some(Some(Element::DenseNode(dense_node))),
+                None => {
+                    self.state = ElementsIterState::Node;
+                    None
                 }
             },
-            ElementsIterState::DenseNode => {
-                match self.dense_nodes.next() {
-                    Some(dense_node) => {
-                        Some(Some(Element::DenseNode(dense_node)))
-                    },
-                    None => {
-                        self.state = ElementsIterState::Node;
-                        None
-                    },
+            ElementsIterState::Node => match self.nodes.next() {
+                Some(node) => Some(Some(Element::Node(Node::new(self.block, node)))),
+                None => {
+                    self.state = ElementsIterState::Way;
+                    None
                 }
             },
-            ElementsIterState::Node => {
-                match self.nodes.next() {
-                    Some(node) => {
-                        Some(Some(Element::Node(Node::new(self.block, node))))
-                    },
-                    None => {
-                        self.state = ElementsIterState::Way;
-                        None
-                    },
+            ElementsIterState::Way => match self.ways.next() {
+                Some(way) => Some(Some(Element::Way(Way::new(self.block, way)))),
+                None => {
+                    self.state = ElementsIterState::Relation;
+                    None
                 }
             },
-            ElementsIterState::Way => {
-                match self.ways.next() {
-                    Some(way) => {
-                        Some(Some(Element::Way(Way::new(self.block, way))))
-                    },
-                    None => {
-                        self.state = ElementsIterState::Relation;
-                        None
-                    },
-                }
-            },
-            ElementsIterState::Relation => {
-                match self.relations.next() {
-                    Some(rel) => {
-                        Some(Some(Element::Relation(Relation::new(self.block, rel))))
-                    },
-                    None => {
-                        self.state = ElementsIterState::Group;
-                        None
-                    },
+            ElementsIterState::Relation => match self.relations.next() {
+                Some(rel) => Some(Some(Element::Relation(Relation::new(self.block, rel)))),
+                None => {
+                    self.state = ElementsIterState::Group;
+                    None
                 }
             },
         }
@@ -231,7 +211,6 @@ impl<'a> Iterator for BlockElementsIter<'a> {
         }
     }
 }
-
 
 /// An iterator over the groups in a `PrimitiveBlock`.
 #[derive(Clone, Debug)]
@@ -274,9 +253,10 @@ pub struct GroupNodeIter<'a> {
 }
 
 impl<'a> GroupNodeIter<'a> {
-    fn new(block: &'a osmformat::PrimitiveBlock,
-           group: &'a osmformat::PrimitiveGroup)
-          -> GroupNodeIter<'a> {
+    fn new(
+        block: &'a osmformat::PrimitiveBlock,
+        group: &'a osmformat::PrimitiveGroup,
+    ) -> GroupNodeIter<'a> {
         GroupNodeIter {
             block,
             nodes: group.get_nodes().iter(),
@@ -309,9 +289,10 @@ pub struct GroupWayIter<'a> {
 }
 
 impl<'a> GroupWayIter<'a> {
-    fn new(block: &'a osmformat::PrimitiveBlock,
-           group: &'a osmformat::PrimitiveGroup)
-          -> GroupWayIter<'a> {
+    fn new(
+        block: &'a osmformat::PrimitiveBlock,
+        group: &'a osmformat::PrimitiveGroup,
+    ) -> GroupWayIter<'a> {
         GroupWayIter {
             block,
             ways: group.get_ways().iter(),
@@ -344,9 +325,10 @@ pub struct GroupRelationIter<'a> {
 }
 
 impl<'a> GroupRelationIter<'a> {
-    fn new(block: &'a osmformat::PrimitiveBlock,
-           group: &'a osmformat::PrimitiveGroup)
-          -> GroupRelationIter<'a> {
+    fn new(
+        block: &'a osmformat::PrimitiveBlock,
+        group: &'a osmformat::PrimitiveGroup,
+    ) -> GroupRelationIter<'a> {
         GroupRelationIter {
             block,
             rels: group.get_relations().iter(),
@@ -371,11 +353,14 @@ impl<'a> Iterator for GroupRelationIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupRelationIter<'a> {}
 
-pub(crate) fn str_from_stringtable(block: &osmformat::PrimitiveBlock, index: usize) -> Result<&str> {
+pub(crate) fn str_from_stringtable(
+    block: &osmformat::PrimitiveBlock,
+    index: usize,
+) -> Result<&str> {
     if let Some(vec) = block.get_stringtable().get_s().get(index) {
         std::str::from_utf8(vec)
-            .map_err(|e| new_error(ErrorKind::StringtableUtf8{err: e, index}))
+            .map_err(|e| new_error(ErrorKind::StringtableUtf8 { err: e, index }))
     } else {
-        Err(new_error(ErrorKind::StringtableIndexOutOfBounds{index}))
+        Err(new_error(ErrorKind::StringtableIndexOutOfBounds { index }))
     }
 }

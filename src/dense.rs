@@ -1,10 +1,9 @@
 //! Iterate over the dense nodes in a `PrimitiveGroup`
 
+use block::str_from_stringtable;
 use error::Result;
 use proto::osmformat;
-use block::str_from_stringtable;
 use std;
-
 
 //TODO Add getter functions for id, version, uid, ...
 /// An OpenStreetMap node element from a compressed array of dense nodes (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
@@ -93,7 +92,7 @@ impl<'a> DenseNode<'a> {
 pub struct DenseNodeIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     dids: std::slice::Iter<'a, i64>, // deltas
-    cid: i64, // current id
+    cid: i64,                        // current id
     versions: std::slice::Iter<'a, i32>,
     dtimestamps: std::slice::Iter<'a, i64>, // deltas
     ctimestamp: i64,
@@ -112,8 +111,10 @@ pub struct DenseNodeIter<'a> {
 }
 
 impl<'a> DenseNodeIter<'a> {
-    pub(crate) fn new(block: &'a osmformat::PrimitiveBlock,
-           osmdense: &'a osmformat::DenseNodes) -> DenseNodeIter<'a> {
+    pub(crate) fn new(
+        block: &'a osmformat::PrimitiveBlock,
+        osmdense: &'a osmformat::DenseNodes,
+    ) -> DenseNodeIter<'a> {
         let info = osmdense.get_denseinfo();
         DenseNodeIter {
             block,
@@ -161,27 +162,30 @@ impl<'a> DenseNodeIter<'a> {
     }
 }
 
-
 impl<'a> Iterator for DenseNodeIter<'a> {
     type Item = DenseNode<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (self.dids.next(),
-               self.versions.next(),
-               self.dtimestamps.next(),
-               self.dchangesets.next(),
-               self.duids.next(),
-               self.duser_sids.next(),
-               self.dlats.next(),
-               self.dlons.next()) {
-            (Some(did),
-             Some(version),
-             Some(dtimestamp),
-             Some(dchangeset),
-             Some(duid),
-             Some(duser_sid),
-             Some(dlat),
-             Some(dlon)) => {
+        match (
+            self.dids.next(),
+            self.versions.next(),
+            self.dtimestamps.next(),
+            self.dchangesets.next(),
+            self.duids.next(),
+            self.duser_sids.next(),
+            self.dlats.next(),
+            self.dlons.next(),
+        ) {
+            (
+                Some(did),
+                Some(version),
+                Some(dtimestamp),
+                Some(dchangeset),
+                Some(duid),
+                Some(duser_sid),
+                Some(dlat),
+                Some(dlon),
+            ) => {
                 self.cid += *did;
                 self.ctimestamp += *dtimestamp;
                 self.cchangeset += *dchangeset;
@@ -214,8 +218,7 @@ impl<'a> Iterator for DenseNodeIter<'a> {
                     lon: self.clon,
                     keys_vals_indices: &self.keys_vals_slice[start_index..end_index],
                 })
-
-            },
+            }
             _ => None,
         }
     }
@@ -248,7 +251,7 @@ impl<'a> Iterator for DenseTagIter<'a> {
                 } else {
                     None
                 }
-            },
+            }
             _ => None,
         }
     }

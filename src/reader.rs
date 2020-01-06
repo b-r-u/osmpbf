@@ -8,7 +8,6 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 
-
 /// A reader for PBF files that gives access to the stored elements: nodes, ways and relations.
 #[derive(Clone, Debug)]
 pub struct ElementReader<R: Read> {
@@ -66,17 +65,18 @@ impl<R: Read> ElementReader<R> {
     /// # foo().unwrap();
     /// ```
     pub fn for_each<F>(self, mut f: F) -> Result<()>
-        where F: for<'a> FnMut(Element<'a>) {
-
+    where
+        F: for<'a> FnMut(Element<'a>),
+    {
         let blobs = self.blob_iter.collect::<Result<Vec<_>>>()?;
 
         //TODO do something useful with header blocks
         for blob in &blobs {
             match blob.decode() {
-                Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => {},
+                Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => {}
                 Ok(BlobDecode::OsmData(block)) => {
                     block.for_each_element(&mut f);
-                },
+                }
                 Err(e) => return Err(e),
             }
         }
@@ -119,31 +119,31 @@ impl<R: Read> ElementReader<R> {
     /// # foo().unwrap();
     /// ```
     pub fn par_map_reduce<MP, RD, ID, T>(self, map_op: MP, identity: ID, reduce_op: RD) -> Result<T>
-        where MP: for<'a> Fn(Element<'a>) -> T + Sync + Send,
-              RD: Fn(T, T) -> T + Sync + Send,
-              ID: Fn() -> T + Sync + Send,
-              T: Send,
+    where
+        MP: for<'a> Fn(Element<'a>) -> T + Sync + Send,
+        RD: Fn(T, T) -> T + Sync + Send,
+        ID: Fn() -> T + Sync + Send,
+        T: Send,
     {
         let blobs = self.blob_iter.collect::<Result<Vec<_>>>()?;
 
-        blobs.into_par_iter().map(|blob| {
-            match blob.decode() {
-                Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => {
-                    Ok(identity())
-                },
-                Ok(BlobDecode::OsmData(block)) => {
-                    Ok(block.elements()
-                            .map(|e| map_op(e))
-                            .fold(identity(), |a, b| reduce_op(a, b)))
-                },
+        blobs
+            .into_par_iter()
+            .map(|blob| match blob.decode() {
+                Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => Ok(identity()),
+                Ok(BlobDecode::OsmData(block)) => Ok(block
+                    .elements()
+                    .map(|e| map_op(e))
+                    .fold(identity(), |a, b| reduce_op(a, b))),
                 Err(e) => Err(e),
-            }
-        }).reduce(|| Ok(identity()), |a, b| {
-            match (a, b) {
-                (Ok(x), Ok(y)) => Ok(reduce_op(x, y)),
-                (x, y) => x.and(y),
-            }
-        })
+            })
+            .reduce(
+                || Ok(identity()),
+                |a, b| match (a, b) {
+                    (Ok(x), Ok(y)) => Ok(reduce_op(x, y)),
+                    (x, y) => x.and(y),
+                },
+            )
     }
 }
 
@@ -163,8 +163,7 @@ impl ElementReader<BufReader<File>> {
     /// # }
     /// # foo().unwrap();
     /// ```
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self>
-    {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         Ok(ElementReader {
             blob_iter: BlobReader::from_path(path)?,
         })
