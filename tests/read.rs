@@ -198,3 +198,32 @@ fn par_read_elements() {
         assert_eq!(elements, 5);
     }
 }
+
+#[test]
+fn read_ways_and_deps() {
+    for path in &TEST_FILE_PATHS {
+        let mut reader = IndexedReader::from_path(path).unwrap();
+
+        let mut ways = 0;
+        let mut nodes = 0;
+
+        reader.read_ways_and_deps(
+            |way| {
+                way.tags()
+                   .find(|&key_value| key_value == ("building", "yes"))
+                   .is_some()
+            },
+            |element| {
+                match element {
+                    Element::Way(_) => ways += 1,
+                    Element::Node(_) => nodes += 1,
+                    Element::DenseNode(_) => nodes += 1,
+                    Element::Relation(_) => panic!(), // should not occur
+                }
+            },
+        ).unwrap();
+
+        assert_eq!(ways, 1);
+        assert_eq!(nodes, 3);
+    }
+}

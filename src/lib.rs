@@ -81,6 +81,7 @@ pub use block::*;
 pub use dense::*;
 pub use elements::*;
 pub use error::{BlobError, Error, ErrorKind, Result};
+pub use indexed::*;
 pub use mmap_blob::*;
 pub use reader::*;
 
@@ -89,6 +90,7 @@ pub mod block;
 pub mod dense;
 pub mod elements;
 mod error;
+pub mod indexed;
 pub mod mmap_blob;
 mod proto;
 pub mod reader;
