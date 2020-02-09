@@ -81,15 +81,15 @@ impl<R: Read + Seek> IndexedReader<R> {
         })
     }
 
-    fn create_index(&mut self) -> Result<()> {
+    pub fn create_index(&mut self) -> Result<()> {
         // remove old items
         self.index.clear();
 
-        for blob in &mut self.reader {
-            let blob = blob?;
-            // Reader is seekable, so offset should return Some(ByteOffset)
-            let offset = blob.offset().unwrap();
-            let blob_type = match blob.get_type() {
+        while let Some(result) = self.reader.next_header_skip_blob() {
+            let (header, offset) = result?;
+            // Reader is seekable, so offset should be Some(ByteOffset)
+            let offset = offset.unwrap();
+            let blob_type = match header.blob_type() {
                 BlobType::OsmHeader => SimpleBlobType::Header,
                 BlobType::OsmData => SimpleBlobType::Primitive,
                 BlobType::Unknown(_) => SimpleBlobType::Unknown,

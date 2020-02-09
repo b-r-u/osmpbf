@@ -121,6 +121,35 @@ impl Blob {
     }
 }
 
+/// A blob header.
+///
+/// Just contains information about the size and type of the following `Blob`.
+#[derive(Clone, Debug)]
+pub struct BlobHeader {
+    header: fileformat::BlobHeader,
+}
+
+impl BlobHeader {
+    fn new(header: fileformat::BlobHeader) -> Self {
+        BlobHeader { header }
+    }
+
+    /// Returns the type of the following blob.
+    pub fn blob_type(&self) -> BlobType {
+        match self.header.get_field_type() {
+            "OSMHeader" => BlobType::OsmHeader,
+            "OSMData" => BlobType::OsmData,
+            x => BlobType::Unknown(x),
+        }
+    }
+
+    /// Returns the size of the following blob in bytes.
+    pub fn get_blob_size(&self) -> i32 {
+        self.header.get_datasize()
+    }
+}
+
+
 /// A reader for PBF files that allows iterating over `Blob`s.
 #[derive(Clone, Debug)]
 pub struct BlobReader<R: Read> {
@@ -153,6 +182,51 @@ impl<R: Read> BlobReader<R> {
             offset: None,
             last_blob_ok: true,
         }
+    }
+
+    fn read_blob_header(&mut self) -> Option<Result<fileformat::BlobHeader>> {
+        let header_size: u64 = match self.reader.read_u32::<byteorder::BigEndian>() {
+            Ok(n) => {
+                self.offset = self.offset.map(|x| ByteOffset(x.0 + 4));
+                u64::from(n)
+            }
+            Err(e) => {
+                self.offset = None;
+                match e.kind() {
+                    ::std::io::ErrorKind::UnexpectedEof => {
+                        //TODO This also accepts corrupted files in the case of 1-3 available bytes
+                        return None;
+                    }
+                    _ => {
+                        self.last_blob_ok = false;
+                        return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
+                    }
+                }
+            }
+        };
+
+        if header_size >= MAX_BLOB_HEADER_SIZE {
+            self.last_blob_ok = false;
+            return Some(Err(new_blob_error(BlobError::HeaderTooBig {
+                size: header_size,
+            })));
+        }
+
+        let header: fileformat::BlobHeader =
+            match parse_message_from_reader(&mut self.reader.by_ref().take(header_size)) {
+                Ok(header) => header,
+                Err(e) => {
+                    self.offset = None;
+                    self.last_blob_ok = false;
+                    return Some(Err(new_protobuf_error(e, "blob header")));
+                }
+            };
+
+        self.offset = self
+            .offset
+            .map(|x| ByteOffset(x.0 + header_size));
+
+        Some(Ok(header))
     }
 }
 
@@ -195,42 +269,11 @@ impl<R: Read> Iterator for BlobReader<R> {
 
         let prev_offset = self.offset;
 
-        let header_size: u64 = match self.reader.read_u32::<byteorder::BigEndian>() {
-            Ok(n) => {
-                self.offset = self.offset.map(|x| ByteOffset(x.0 + 4));
-                u64::from(n)
-            }
-            Err(e) => {
-                self.offset = None;
-                match e.kind() {
-                    ::std::io::ErrorKind::UnexpectedEof => {
-                        //TODO This also accepts corrupted files in the case of 1-3 available bytes
-                        return None;
-                    }
-                    _ => {
-                        self.last_blob_ok = false;
-                        return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
-                    }
-                }
-            }
+        let header = match self.read_blob_header() {
+            Some(Ok(header)) => header,
+            Some(Err(err)) => return Some(Err(err)),
+            None => return None,
         };
-
-        if header_size >= MAX_BLOB_HEADER_SIZE {
-            self.last_blob_ok = false;
-            return Some(Err(new_blob_error(BlobError::HeaderTooBig {
-                size: header_size,
-            })));
-        }
-
-        let header: fileformat::BlobHeader =
-            match parse_message_from_reader(&mut self.reader.by_ref().take(header_size)) {
-                Ok(header) => header,
-                Err(e) => {
-                    self.offset = None;
-                    self.last_blob_ok = false;
-                    return Some(Err(new_protobuf_error(e, "blob header")));
-                }
-            };
 
         let blob: fileformat::Blob = match parse_message_from_reader(
             &mut self.reader.by_ref().take(header.get_datasize() as u64),
@@ -245,7 +288,7 @@ impl<R: Read> Iterator for BlobReader<R> {
 
         self.offset = self
             .offset
-            .map(|x| ByteOffset(x.0 + header_size + header.get_datasize() as u64));
+            .map(|x| ByteOffset(x.0 + header.get_datasize() as u64));
 
         Some(Ok(Blob::new(header, blob, prev_offset)))
     }
@@ -325,6 +368,34 @@ impl<R: Read + Seek> BlobReader<R> {
                 Err(e.into())
             }
         }
+    }
+
+    /// Read and return next `BlobHeader` but skip the following `Blob`. This allows really fast
+    /// iteration of the PBF structure if only the byte offset and `BlobType` are important.
+    /// On success, returns the `BlobHeader` and the byte offset of the header which can also be
+    /// used as an offset for reading the entire `Blob` (including header).
+    pub fn next_header_skip_blob(&mut self) -> Option<Result<(BlobHeader, Option<ByteOffset>)>> {
+        // Stop iteration if there was an error.
+        if !self.last_blob_ok {
+            return None;
+        }
+
+        let prev_offset = self.offset;
+
+        // read header
+        let header = match self.read_blob_header() {
+            Some(Ok(header)) => header,
+            Some(Err(err)) => return Some(Err(err)),
+            None => return None,
+        };
+
+        // skip blob (which also adjusts self.offset)
+        if let Err(err) = self.seek_raw(SeekFrom::Current(header.get_datasize() as i64)) {
+            self.last_blob_ok = false;
+            return Some(Err(err));
+        }
+
+        Some(Ok((BlobHeader::new(header), prev_offset)))
     }
 }
 
