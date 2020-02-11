@@ -1,6 +1,7 @@
 //! Speed up searches by using an index
 
 use error::Result;
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{Read, Seek};
 use std::ops::RangeInclusive;
@@ -15,23 +16,9 @@ pub struct IdRanges {
     relation_ids: Option<RangeInclusive<i64>>,
 }
 
-/// Checks if `sorted_slice` contains some values from the given `range`.
-/// Assumes that `sorted_slice` is sorted.
-/// Returns the range of indices into `sorted_slice` that needs to be checked.
-/// Returns `None` if it is guaranteed that no values from `sorted_slice` are inside `range`.
-fn range_included(range: &RangeInclusive<i64>, sorted_slice: &[i64]) -> Option<RangeInclusive<usize>> {
-    match (sorted_slice.binary_search(&range.start()), sorted_slice.binary_search(&range.end())) {
-        (Ok(start), Ok(end)) => Some(RangeInclusive::new(start, end)),
-        (Ok(start), Err(end)) => Some(RangeInclusive::new(start, end.saturating_sub(1))),
-        (Err(start), Ok(end)) => Some(RangeInclusive::new(start, end)),
-        (Err(start), Err(end)) => {
-            if start == end {
-                None
-            } else {
-                Some(RangeInclusive::new(start, end.saturating_sub(1)))
-            }
-        },
-    }
+/// Returns true if the given set contains at least one value that is inside the given range.
+fn range_included(range: RangeInclusive<i64>, node_ids: &BTreeSet<i64>) -> bool {
+    node_ids.range(range).next().is_some()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -156,7 +143,7 @@ impl<R: Read + Seek> IndexedReader<R> {
             self.create_index()?;
         }
 
-        let mut node_ids: Vec<i64> = vec![];
+        let mut node_ids: BTreeSet<i64> = BTreeSet::new();
 
         // First pass:
         //   * Filter ways and store their dependencies as node IDs
@@ -180,10 +167,7 @@ impl<R: Read + Seek> IndexedReader<R> {
                         if filter(&way) {
                             let refs = way.refs();
 
-                            node_ids.reserve(refs.size_hint().0);
-                            for node_id in refs {
-                                node_ids.push(node_id);
-                            }
+                            node_ids.extend(refs);
 
                             // Return way
                             element_callback(&Element::Way(way));
@@ -214,20 +198,12 @@ impl<R: Read + Seek> IndexedReader<R> {
             }
         }
 
-        // Sort, to enable binary search
-        node_ids.sort_unstable();
-
-        // Remove duplicate node IDs
-        node_ids.dedup();
-
         // Second pass:
         //   * Iterate only over blobs that may include the node IDs we're searching for
         for info in &mut self.index {
             if info.blob_type == SimpleBlobType::Primitive {
                 if let Some(node_id_range) = info.id_ranges.as_ref().and_then(|r| r.node_ids.as_ref()) {
-                    if let Some(slice_range) = range_included(node_id_range, &node_ids) {
-                        let ids_subslice = &node_ids.as_slice()[slice_range];
-
+                    if range_included(node_id_range.clone(), &node_ids) {
                         self.reader.seek(info.offset)?;
                         let blob = self.reader.next().ok_or_else(|| {
                             ::std::io::Error::new(
@@ -238,15 +214,13 @@ impl<R: Read + Seek> IndexedReader<R> {
                         let block = blob.to_primitiveblock()?;
                         for group in block.groups() {
                             for node in group.nodes() {
-                                let id = node.id();
-                                if ids_subslice.binary_search(&id).is_ok() {
+                                if node_ids.contains(&node.id()) {
                                     // ID found, return node
                                     element_callback(&Element::Node(node));
                                 }
                             }
                             for node in group.dense_nodes() {
-                                let id = node.id;
-                                if ids_subslice.binary_search(&id).is_ok() {
+                                if node_ids.contains(&node.id) {
                                     // ID found, return dense node
                                     element_callback(&Element::DenseNode(node));
                                 }
@@ -287,19 +261,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_range_included() {
-        assert_eq!(range_included(&RangeInclusive::new(0, 0), &[1,2,3]), None);
-        assert_eq!(range_included(&RangeInclusive::new(1, 1), &[1,2,3]), Some(RangeInclusive::new(0, 0)));
-        assert_eq!(range_included(&RangeInclusive::new(2, 2), &[1,2,3]), Some(RangeInclusive::new(1, 1)));
-        assert_eq!(range_included(&RangeInclusive::new(3, 3), &[1,2,3]), Some(RangeInclusive::new(2, 2)));
-        assert_eq!(range_included(&RangeInclusive::new(4, 4), &[1,2,3]), None);
-        assert_eq!(range_included(&RangeInclusive::new(0, 1), &[1,2,3]), Some(RangeInclusive::new(0, 0)));
-        assert_eq!(range_included(&RangeInclusive::new(3, 4), &[1,2,3]), Some(RangeInclusive::new(2, 2)));
-        assert_eq!(range_included(&RangeInclusive::new(4, 4), &[1,2,6]), None);
-        assert_eq!(range_included(&RangeInclusive::new(2, 3), &[1,2,6]), Some(RangeInclusive::new(1, 1)));
-        assert_eq!(range_included(&RangeInclusive::new(5, 6), &[1,2,6]), Some(RangeInclusive::new(2, 2)));
-        assert_eq!(range_included(&RangeInclusive::new(5, 8), &[1,2,6]), Some(RangeInclusive::new(2, 2)));
-        assert_eq!(range_included(&RangeInclusive::new(0, 8), &[1,2,6]), Some(RangeInclusive::new(0, 2)));
-        assert_eq!(range_included(&RangeInclusive::new(0, 4), &[1,2,6]), Some(RangeInclusive::new(0, 1)));
+    fn test_range_included_set() {
+        let mut set = BTreeSet::<i64>::new();
+        set.extend(&[1,2,6]);
+
+        assert_eq!(range_included(RangeInclusive::new(0, 0), &set), false);
+        assert_eq!(range_included(RangeInclusive::new(1, 1), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(2, 2), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(3, 3), &set), false);
+        assert_eq!(range_included(RangeInclusive::new(3, 5), &set), false);
+        assert_eq!(range_included(RangeInclusive::new(3, 6), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(6, 6), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(7, 7), &set), false);
+        assert_eq!(range_included(RangeInclusive::new(0, 1), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(6, 7), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(2, 3), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(5, 6), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(5, 8), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(0, 8), &set), true);
+        assert_eq!(range_included(RangeInclusive::new(0, 4), &set), true);
     }
 }
