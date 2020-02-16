@@ -204,6 +204,8 @@ impl<R: Read + Seek> IndexedReader<R> {
             if info.blob_type == SimpleBlobType::Primitive {
                 if let Some(node_id_range) = info.id_ranges.as_ref().and_then(|r| r.node_ids.as_ref()) {
                     if range_included(node_id_range.clone(), &node_ids) {
+                        //TODO Only collect into Vec if range has a reasonable size
+                        let node_ids: Vec<i64> = node_ids.range(node_id_range.clone()).map(|x| *x).collect();
                         self.reader.seek(info.offset)?;
                         let blob = self.reader.next().ok_or_else(|| {
                             ::std::io::Error::new(
@@ -214,13 +216,13 @@ impl<R: Read + Seek> IndexedReader<R> {
                         let block = blob.to_primitiveblock()?;
                         for group in block.groups() {
                             for node in group.nodes() {
-                                if node_ids.contains(&node.id()) {
+                                if node_ids.binary_search(&node.id()).is_ok() {
                                     // ID found, return node
                                     element_callback(&Element::Node(node));
                                 }
                             }
                             for node in group.dense_nodes() {
-                                if node_ids.contains(&node.id) {
+                                if node_ids.binary_search(&node.id).is_ok() {
                                     // ID found, return dense node
                                     element_callback(&Element::DenseNode(node));
                                 }
