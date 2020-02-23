@@ -10,11 +10,11 @@ use std::path::Path;
 
 /// A reader for PBF files that gives access to the stored elements: nodes, ways and relations.
 #[derive(Clone, Debug)]
-pub struct ElementReader<R: Read> {
+pub struct ElementReader<R: Read + Send> {
     blob_iter: BlobReader<R>,
 }
 
-impl<R: Read> ElementReader<R> {
+impl<R: Read + Send> ElementReader<R> {
     /// Creates a new `ElementReader`.
     ///
     /// # Example
@@ -68,11 +68,9 @@ impl<R: Read> ElementReader<R> {
     where
         F: for<'a> FnMut(Element<'a>),
     {
-        let blobs = self.blob_iter.collect::<Result<Vec<_>>>()?;
-
         //TODO do something useful with header blocks
-        for blob in &blobs {
-            match blob.decode() {
+        for blob in self.blob_iter {
+            match blob?.decode() {
                 Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => {}
                 Ok(BlobDecode::OsmData(block)) => {
                     block.for_each_element(&mut f);
@@ -125,11 +123,9 @@ impl<R: Read> ElementReader<R> {
         ID: Fn() -> T + Sync + Send,
         T: Send,
     {
-        let blobs = self.blob_iter.collect::<Result<Vec<_>>>()?;
-
-        blobs
-            .into_par_iter()
-            .map(|blob| match blob.decode() {
+        self.blob_iter
+            .par_bridge()
+            .map(|blob| match blob?.decode() {
                 Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => Ok(identity()),
                 Ok(BlobDecode::OsmData(block)) => Ok(block
                     .elements()

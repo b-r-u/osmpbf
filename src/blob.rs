@@ -152,14 +152,14 @@ impl BlobHeader {
 
 /// A reader for PBF files that allows iterating over `Blob`s.
 #[derive(Clone, Debug)]
-pub struct BlobReader<R: Read> {
+pub struct BlobReader<R: Read + Send> {
     reader: R,
     /// Current reader offset in bytes from the start of the stream.
     offset: Option<ByteOffset>,
     last_blob_ok: bool,
 }
 
-impl<R: Read> BlobReader<R> {
+impl<R: Read + Send> BlobReader<R> {
     /// Creates a new `BlobReader`.
     ///
     /// # Example
@@ -258,7 +258,7 @@ impl BlobReader<BufReader<File>> {
     }
 }
 
-impl<R: Read> Iterator for BlobReader<R> {
+impl<R: Read + Send> Iterator for BlobReader<R> {
     type Item = Result<Blob>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -294,7 +294,7 @@ impl<R: Read> Iterator for BlobReader<R> {
     }
 }
 
-impl<R: Read + Seek> BlobReader<R> {
+impl<R: Read + Seek + Send> BlobReader<R> {
     /// Creates a new `BlobReader` from the given reader that is seekable and will be initialized
     /// with a valid offset.
     ///
