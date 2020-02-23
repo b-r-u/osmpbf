@@ -38,12 +38,12 @@ struct BlobInfo {
 /// Allows filtering elements and iterating over their dependencies.
 /// It chooses an efficient method for navigating the PBF structure to achieve this in reasonable
 /// time and with reasonable memory.
-pub struct IndexedReader<R: Read + Seek> {
+pub struct IndexedReader<R: Read + Seek + Send> {
     reader: BlobReader<R>,
     index: Vec<BlobInfo>,
 }
 
-impl<R: Read + Seek> IndexedReader<R> {
+impl<R: Read + Seek + Send> IndexedReader<R> {
     /// Creates a new `IndexedReader`.
     ///
     /// # Example
