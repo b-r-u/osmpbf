@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 osmpbf = "0.1"
 ```
 
-and this to your crate root:
+and if you're using Rust 2015, add this line to the crate root:
 
 ```rust
 extern crate osmpbf;
