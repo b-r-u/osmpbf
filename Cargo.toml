@@ -1,6 +1,6 @@
 [package]
 name = "osmpbf"
-version = "0.1.16"
+version = "0.1.17"
 authors = ["Johannes Hofmann <mail@b-r-u.org>"]
 readme = "README.md"
 repository = "https://github.com/b-r-u/osmpbf"
