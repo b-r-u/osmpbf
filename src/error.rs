@@ -105,9 +105,32 @@ impl From<Error> for io::Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match *self.0 {
-            ErrorKind::Io(ref err) => err.description(),
-            ErrorKind::Protobuf { ref err, .. } => err.description(),
-            ErrorKind::StringtableUtf8 { ref err, .. } => err.description(),
+            ErrorKind::Io(ref err, ..) => {
+                use std::io::ErrorKind;
+                match err.kind() {
+                    ErrorKind::NotFound => "io error: not found",
+                    ErrorKind::PermissionDenied => "io error: permission denied",
+                    ErrorKind::ConnectionRefused => "io error: connection refused",
+                    ErrorKind::ConnectionReset => "io error: connection reset",
+                    ErrorKind::ConnectionAborted => "io error: connection aborted",
+                    ErrorKind::NotConnected => "io error: not connected",
+                    ErrorKind::AddrInUse => "io error: address in use",
+                    ErrorKind::AddrNotAvailable => "io error: address not available",
+                    ErrorKind::BrokenPipe => "io error: broken pipe",
+                    ErrorKind::AlreadyExists => "io error: already exists",
+                    ErrorKind::WouldBlock => "io error: would block",
+                    ErrorKind::InvalidInput => "io error: invalid input",
+                    ErrorKind::InvalidData => "io error: invalid data",
+                    ErrorKind::TimedOut => "io error: timed out",
+                    ErrorKind::WriteZero => "io error: write zero",
+                    ErrorKind::Interrupted => "io error: interrupted",
+                    ErrorKind::Other => "io error: other",
+                    ErrorKind::UnexpectedEof => "io error: unexpected EOF",
+                    _ => "io error",
+                }
+            }
+            ErrorKind::Protobuf { .. } => "protobuf error",
+            ErrorKind::StringtableUtf8 { .. } => "UTF-8 error in stringtable",
             ErrorKind::StringtableIndexOutOfBounds { .. } => "stringtable index out of bounds",
             ErrorKind::Blob(BlobError::InvalidHeaderSize) => {
                 "blob header size could not be decoded"
