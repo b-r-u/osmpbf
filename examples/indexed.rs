@@ -3,7 +3,7 @@
 
 extern crate osmpbf;
 
-use osmpbf::{IndexedReader, Element};
+use osmpbf::{Element, IndexedReader};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Element::Way(_way) => ways += 1,
                 Element::Node(_node) => nodes += 1,
                 Element::DenseNode(_dense_node) => nodes += 1,
-                Element::Relation(_) => {}, // should not occur
+                Element::Relation(_) => {} // should not occur
             }
         },
     )?;

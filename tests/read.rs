@@ -207,21 +207,23 @@ fn read_ways_and_deps() {
         let mut ways = 0;
         let mut nodes = 0;
 
-        reader.read_ways_and_deps(
-            |way| {
-                way.tags()
-                   .find(|&key_value| key_value == ("building", "yes"))
-                   .is_some()
-            },
-            |element| {
-                match element {
-                    Element::Way(_) => ways += 1,
-                    Element::Node(_) => nodes += 1,
-                    Element::DenseNode(_) => nodes += 1,
-                    Element::Relation(_) => panic!(), // should not occur
-                }
-            },
-        ).unwrap();
+        reader
+            .read_ways_and_deps(
+                |way| {
+                    way.tags()
+                        .find(|&key_value| key_value == ("building", "yes"))
+                        .is_some()
+                },
+                |element| {
+                    match element {
+                        Element::Way(_) => ways += 1,
+                        Element::Node(_) => nodes += 1,
+                        Element::DenseNode(_) => nodes += 1,
+                        Element::Relation(_) => panic!(), // should not occur
+                    }
+                },
+            )
+            .unwrap();
 
         assert_eq!(ways, 1);
         assert_eq!(nodes, 3);

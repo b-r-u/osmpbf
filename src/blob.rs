@@ -149,7 +149,6 @@ impl BlobHeader {
     }
 }
 
-
 /// A reader for PBF files that allows iterating over `Blob`s.
 #[derive(Clone, Debug)]
 pub struct BlobReader<R: Read + Send> {
@@ -222,9 +221,7 @@ impl<R: Read + Send> BlobReader<R> {
                 }
             };
 
-        self.offset = self
-            .offset
-            .map(|x| ByteOffset(x.0 + header_size));
+        self.offset = self.offset.map(|x| ByteOffset(x.0 + header_size));
 
         Some(Ok(header))
     }

@@ -129,11 +129,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
     /// # }
     /// # foo().unwrap();
     /// ```
-    pub fn read_ways_and_deps<F, E>(
-        &mut self,
-        mut filter: F,
-        mut element_callback: E,
-    ) -> Result<()>
+    pub fn read_ways_and_deps<F, E>(&mut self, mut filter: F, mut element_callback: E) -> Result<()>
     where
         F: for<'a> FnMut(&Way<'a>) -> bool,
         E: for<'a> FnMut(&Element<'a>),
@@ -202,10 +198,13 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         //   * Iterate only over blobs that may include the node IDs we're searching for
         for info in &mut self.index {
             if info.blob_type == SimpleBlobType::Primitive {
-                if let Some(node_id_range) = info.id_ranges.as_ref().and_then(|r| r.node_ids.as_ref()) {
+                if let Some(node_id_range) =
+                    info.id_ranges.as_ref().and_then(|r| r.node_ids.as_ref())
+                {
                     if range_included(node_id_range.clone(), &node_ids) {
                         //TODO Only collect into Vec if range has a reasonable size
-                        let node_ids: Vec<i64> = node_ids.range(node_id_range.clone()).copied().collect();
+                        let node_ids: Vec<i64> =
+                            node_ids.range(node_id_range.clone()).copied().collect();
                         self.reader.seek(info.offset)?;
                         let blob = self.reader.next().ok_or_else(|| {
                             ::std::io::Error::new(
@@ -265,7 +264,7 @@ mod tests {
     #[test]
     fn test_range_included_set() {
         let mut set = BTreeSet::<i64>::new();
-        set.extend(&[1,2,6]);
+        set.extend(&[1, 2, 6]);
 
         assert_eq!(range_included(RangeInclusive::new(0, 0), &set), false);
         assert_eq!(range_included(RangeInclusive::new(1, 1), &set), true);
