@@ -205,7 +205,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
                 if let Some(node_id_range) = info.id_ranges.as_ref().and_then(|r| r.node_ids.as_ref()) {
                     if range_included(node_id_range.clone(), &node_ids) {
                         //TODO Only collect into Vec if range has a reasonable size
-                        let node_ids: Vec<i64> = node_ids.range(node_id_range.clone()).map(|x| *x).collect();
+                        let node_ids: Vec<i64> = node_ids.range(node_id_range.clone()).copied().collect();
                         self.reader.seek(info.offset)?;
                         let blob = self.reader.next().ok_or_else(|| {
                             ::std::io::Error::new(
