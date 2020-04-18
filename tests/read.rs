@@ -81,9 +81,9 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
         assert_eq!(dense_nodes[1].id, 106);
         assert_eq!(dense_nodes[2].id, 108);
 
-        assert_eq!(dense_nodes[0].uid, 17);
-        assert_eq!(dense_nodes[1].uid, 17);
-        assert_eq!(dense_nodes[2].uid, 17);
+        assert_eq!(dense_nodes[0].info().map(|x| x.uid()), Some(17));
+        assert_eq!(dense_nodes[1].info().map(|x| x.uid()), Some(17));
+        assert_eq!(dense_nodes[2].info().map(|x| x.uid()), Some(17));
     }
 
     {

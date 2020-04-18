@@ -14,23 +14,16 @@ pub struct DenseNode<'a> {
     /// The node id. It should be unique between nodes and might be negative to indicate
     /// that the element has not yet been uploaded to a server.
     pub id: i64,
-    /// The version of this element.
-    pub version: i32,
-    timestamp: i64,
-    /// The changeset id.
-    pub changeset: i64,
-    /// The user id.
-    pub uid: i32,
-    user_sid: i32,
     lat: i64,
     lon: i64,
     keys_vals_indices: &'a [i32],
+    info: Option<DenseNodeInfo<'a>>,
 }
 
 impl<'a> DenseNode<'a> {
-    /// Returns the user name.
-    pub fn user(&self) -> Result<&'a str> {
-        str_from_stringtable(self.block, self.user_sid as usize)
+    /// return optional metadata about the ndode
+    pub fn info(&'a self) -> Option<&'a DenseNodeInfo<'a>> {
+        self.info.as_ref()
     }
 
     /// Returns the latitude coordinate in degrees.
@@ -63,11 +56,6 @@ impl<'a> DenseNode<'a> {
         (self.nano_lon() / 100) as i32
     }
 
-    /// Returns the time stamp in milliseconds since the epoch.
-    pub fn milli_timestamp(&self) -> i64 {
-        self.timestamp * i64::from(self.block.get_date_granularity())
-    }
-
     /// Returns an iterator over the tags of this node (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
     pub fn tags(&self) -> DenseTagIter<'a> {
         DenseTagIter {
@@ -91,23 +79,15 @@ impl<'a> DenseNode<'a> {
 #[derive(Clone, Debug)]
 pub struct DenseNodeIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
-    dids: std::slice::Iter<'a, i64>, // deltas
-    cid: i64,                        // current id
-    versions: std::slice::Iter<'a, i32>,
-    dtimestamps: std::slice::Iter<'a, i64>, // deltas
-    ctimestamp: i64,
-    dchangesets: std::slice::Iter<'a, i64>, // deltas
-    cchangeset: i64,
-    duids: std::slice::Iter<'a, i32>, // deltas
-    cuid: i32,
-    duser_sids: std::slice::Iter<'a, i32>, // deltas
-    cuser_sid: i32,
+    dids: std::slice::Iter<'a, i64>,  // deltas
+    cid: i64,                         // current id
     dlats: std::slice::Iter<'a, i64>, // deltas
     clat: i64,
     dlons: std::slice::Iter<'a, i64>, // deltas
     clon: i64,
     keys_vals_slice: &'a [i32],
     keys_vals_index: usize,
+    info_iter: Option<DenseNodeInfoIter<'a>>,
 }
 
 impl<'a> DenseNodeIter<'a> {
@@ -115,26 +95,18 @@ impl<'a> DenseNodeIter<'a> {
         block: &'a osmformat::PrimitiveBlock,
         osmdense: &'a osmformat::DenseNodes,
     ) -> DenseNodeIter<'a> {
-        let info = osmdense.get_denseinfo();
+        let info_iter = Some(DenseNodeInfoIter::new(block, osmdense.get_denseinfo()));
         DenseNodeIter {
             block,
             dids: osmdense.get_id().iter(),
             cid: 0,
-            versions: info.get_version().iter(),
-            dtimestamps: info.get_timestamp().iter(),
-            ctimestamp: 0,
-            dchangesets: info.get_changeset().iter(),
-            cchangeset: 0,
-            duids: info.get_uid().iter(),
-            cuid: 0,
-            duser_sids: info.get_user_sid().iter(),
-            cuser_sid: 0,
             dlats: osmdense.get_lat().iter(),
             clat: 0,
             dlons: osmdense.get_lon().iter(),
             clon: 0,
             keys_vals_slice: osmdense.get_keys_vals(),
             keys_vals_index: 0,
+            info_iter,
         }
     }
 
@@ -143,21 +115,13 @@ impl<'a> DenseNodeIter<'a> {
             block,
             dids: [].iter(),
             cid: 0,
-            versions: [].iter(),
-            dtimestamps: [].iter(),
-            ctimestamp: 0,
-            dchangesets: [].iter(),
-            cchangeset: 0,
-            duids: [].iter(),
-            cuid: 0,
-            duser_sids: [].iter(),
-            cuser_sid: 0,
             dlats: [].iter(),
             clat: 0,
             dlons: [].iter(),
             clon: 0,
             keys_vals_slice: &[],
             keys_vals_index: 0,
+            info_iter: None,
         }
     }
 }
@@ -168,29 +132,12 @@ impl<'a> Iterator for DenseNodeIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match (
             self.dids.next(),
-            self.versions.next(),
-            self.dtimestamps.next(),
-            self.dchangesets.next(),
-            self.duids.next(),
-            self.duser_sids.next(),
             self.dlats.next(),
             self.dlons.next(),
+            self.info_iter.as_mut().and_then(|iter| iter.next()),
         ) {
-            (
-                Some(did),
-                Some(version),
-                Some(dtimestamp),
-                Some(dchangeset),
-                Some(duid),
-                Some(duser_sid),
-                Some(dlat),
-                Some(dlon),
-            ) => {
+            (Some(did), Some(dlat), Some(dlon), info) => {
                 self.cid += *did;
-                self.ctimestamp += *dtimestamp;
-                self.cchangeset += *dchangeset;
-                self.cuid += *duid;
-                self.cuser_sid += *duser_sid;
                 self.clat += *dlat;
                 self.clon += *dlon;
 
@@ -209,14 +156,10 @@ impl<'a> Iterator for DenseNodeIter<'a> {
                 Some(DenseNode {
                     block: self.block,
                     id: self.cid,
-                    version: *version,
-                    timestamp: self.ctimestamp,
-                    changeset: self.cchangeset,
-                    uid: self.cuid,
-                    user_sid: self.cuser_sid,
                     lat: self.clat,
                     lon: self.clon,
                     keys_vals_indices: &self.keys_vals_slice[start_index..end_index],
+                    info,
                 })
             }
             _ => None,
@@ -229,6 +172,114 @@ impl<'a> Iterator for DenseNodeIter<'a> {
 }
 
 impl<'a> ExactSizeIterator for DenseNodeIter<'a> {}
+
+/// Optional metadata with non-geographic information about dense node
+#[derive(Clone, Debug)]
+pub struct DenseNodeInfo<'a> {
+    block: &'a osmformat::PrimitiveBlock,
+    /// The version of this element.
+    version: i32,
+    /// Timestamp
+    timestamp: i64,
+    /// The changeset id.
+    changeset: i64,
+    /// The user id.
+    uid: i32,
+    // String IDs for usernames.
+    user_sid: i32,
+}
+
+impl<'a> DenseNodeInfo<'a> {
+    /// Returns the version of this element.
+    pub fn version(&self) -> i32 {
+        self.version
+    }
+
+    /// Returns the changeset id.
+    pub fn changeset(&self) -> i64 {
+        self.changeset
+    }
+
+    /// Returns the user id.
+    pub fn uid(&self) -> i32 {
+        self.uid
+    }
+
+    /// Returns the user name.
+    pub fn user(&self) -> Result<&'a str> {
+        str_from_stringtable(self.block, self.user_sid as usize)
+    }
+
+    /// Returns the time stamp in milliseconds since the epoch.
+    pub fn milli_timestamp(&self) -> i64 {
+        self.timestamp * i64::from(self.block.get_date_granularity())
+    }
+}
+
+/// An iterator over dense nodes info. It decodes the delta encoded values.
+#[derive(Clone, Debug)]
+pub struct DenseNodeInfoIter<'a> {
+    block: &'a osmformat::PrimitiveBlock,
+    versions: std::slice::Iter<'a, i32>,
+    dtimestamps: std::slice::Iter<'a, i64>, // deltas
+    ctimestamp: i64,
+    dchangesets: std::slice::Iter<'a, i64>, // deltas
+    cchangeset: i64,
+    duids: std::slice::Iter<'a, i32>, // deltas
+    cuid: i32,
+    duser_sids: std::slice::Iter<'a, i32>, // deltas
+    cuser_sid: i32,
+}
+
+impl<'a> DenseNodeInfoIter<'a> {
+    fn new(
+        block: &'a osmformat::PrimitiveBlock,
+        info: &'a osmformat::DenseInfo,
+    ) -> DenseNodeInfoIter<'a> {
+        DenseNodeInfoIter {
+            block,
+            versions: info.get_version().iter(),
+            dtimestamps: info.get_timestamp().iter(),
+            ctimestamp: 0,
+            dchangesets: info.get_changeset().iter(),
+            cchangeset: 0,
+            duids: info.get_uid().iter(),
+            cuid: 0,
+            duser_sids: info.get_user_sid().iter(),
+            cuser_sid: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for DenseNodeInfoIter<'a> {
+    type Item = DenseNodeInfo<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match (
+            self.versions.next(),
+            self.dtimestamps.next(),
+            self.dchangesets.next(),
+            self.duids.next(),
+            self.duser_sids.next(),
+        ) {
+            (Some(&version), Some(dtimestamp), Some(dchangeset), Some(duid), Some(duser_sid)) => {
+                self.ctimestamp += *dtimestamp;
+                self.cchangeset += *dchangeset;
+                self.cuid += *duid;
+                self.cuser_sid += *duser_sid;
+                Some(DenseNodeInfo {
+                    block: self.block,
+                    version,
+                    timestamp: self.ctimestamp,
+                    changeset: self.cchangeset,
+                    uid: self.cuid,
+                    user_sid: self.cuser_sid,
+                })
+            }
+            _ => None,
+        }
+    }
+}
 
 /// An iterator over the tags in a dense node.
 #[derive(Clone, Debug)]
