@@ -7,7 +7,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-osmpbf = "0.1"
+osmpbf = "0.2"
 ```
 
 and if you're using Rust 2015, add this line to the crate root:
