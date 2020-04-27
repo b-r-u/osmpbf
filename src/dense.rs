@@ -173,7 +173,7 @@ impl<'a> Iterator for DenseNodeIter<'a> {
 
 impl<'a> ExactSizeIterator for DenseNodeIter<'a> {}
 
-/// Optional metadata with non-geographic information about dense node
+/// Optional metadata with non-geographic information about a dense node
 #[derive(Clone, Debug)]
 pub struct DenseNodeInfo<'a> {
     block: &'a osmformat::PrimitiveBlock,
