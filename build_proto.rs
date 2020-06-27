@@ -14,12 +14,9 @@ fn main() {
         println!("cargo:rerun-if-changed={}", path);
     }
 
-    protoc_rust::run(protoc_rust::Args {
-        out_dir: "src/proto",
-        input: &proto_files,
-        customize: protoc_rust::Customize {
-            ..Default::default()
-        },
-        includes: &[],
-    }).expect("protoc");
+    protoc_rust::Codegen::new()
+        .out_dir("src/proto")
+        .inputs(&proto_files)
+        .run()
+        .expect("Running protoc failed.");
 }
