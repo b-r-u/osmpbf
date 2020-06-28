@@ -28,48 +28,42 @@ extern crate osmpbf;
 Here's a simple example that counts all the ways in a file:
 
 ```rust
-extern crate osmpbf;
+use osmpbf::{ElementReader, Element};
 
-use osmpbf::*;
+let reader = ElementReader::from_path("tests/test.osm.pbf")?;
+let mut ways = 0_u64;
 
-fn main() {
-    let reader = ElementReader::from_path("tests/test.osm.pbf").unwrap();
-    let mut ways = 0_u64;
+// Increment the counter by one for each way.
+reader.for_each(|element| {
+    if let Element::Way(_) = element {
+        ways += 1;
+    }
+})?;
 
-    // Increment the counter by one for each way.
-    reader.for_each(|element| {
-        if let Element::Way(_) = element {
-            ways += 1;
-        }
-    }).unwrap();
-
-    println!("Number of ways: {}", ways);
-}
+println!("Number of ways: {}", ways);
 ```
 
 In this second example, we also count the ways but make use of all cores by
 decoding the file in parallel:
 
 ```rust
-use osmpbf::*;
+use osmpbf::{ElementReader, Element};
 
-fn main() {
-    let reader = ElementReader::from_path("tests/test.osm.pbf").unwrap();
+let reader = ElementReader::from_path("tests/test.osm.pbf")?;
 
-    // Count the ways
-    let ways = reader.par_map_reduce(
-        |element| {
-            match element {
-                Element::Way(_) => 1,
-                _ => 0,
-            }
-        },
-        || 0_u64,      // Zero is the identity value for addition
-        |a, b| a + b   // Sum the partial results
-    ).unwrap();
+// Count the ways
+let ways = reader.par_map_reduce(
+    |element| {
+        match element {
+            Element::Way(_) => 1,
+            _ => 0,
+        }
+    },
+    || 0_u64,      // Zero is the identity value for addition
+    |a, b| a + b   // Sum the partial results
+)?;
 
-    println!("Number of ways: {}", ways);
-}
+println!("Number of ways: {}", ways);
 ```
 
 ## The PBF format

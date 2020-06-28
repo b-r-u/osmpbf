@@ -24,7 +24,7 @@ file:
 ```rust
 use osmpbf::{ElementReader, Element};
 
-let reader = ElementReader::from_path("tests/test.osm.pbf").unwrap();
+let reader = ElementReader::from_path("tests/test.osm.pbf")?;
 let mut ways = 0_u64;
 
 // Increment the counter by one for each way.
@@ -32,9 +32,11 @@ reader.for_each(|element| {
     if let Element::Way(_) = element {
         ways += 1;
     }
-}).unwrap();
+})?;
 
 println!("Number of ways: {}", ways);
+# assert_eq!(ways, 1);
+# Ok::<(), std::io::Error>(())
 ```
 
 ## Example: Count ways in parallel
@@ -45,7 +47,7 @@ decoding the file in parallel:
 ```rust
 use osmpbf::{ElementReader, Element};
 
-let reader = ElementReader::from_path("tests/test.osm.pbf").unwrap();
+let reader = ElementReader::from_path("tests/test.osm.pbf")?;
 
 // Count the ways
 let ways = reader.par_map_reduce(
@@ -57,9 +59,11 @@ let ways = reader.par_map_reduce(
     },
     || 0_u64,      // Zero is the identity value for addition
     |a, b| a + b   // Sum the partial results
-).unwrap();
+)?;
 
 println!("Number of ways: {}", ways);
+# assert_eq!(ways, 1);
+# Ok::<(), std::io::Error>(())
 ```
 */
 
