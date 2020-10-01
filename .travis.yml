@@ -6,9 +6,8 @@ rust:
   - nightly
   - 1.44.1
 script:
-  - |
-      cargo test --verbose;
-      cargo test --verbose --no-default-features;
-      cargo doc --verbose;
+  - cargo test --verbose
+  - cargo test --verbose --no-default-features
+  - cargo doc --verbose
 env:
   - RUSTFLAGS="-D warnings"
