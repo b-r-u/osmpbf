@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::{Read, Seek};
 use std::ops::RangeInclusive;
 use std::path::Path;
-use {BlobReader, BlobType, ByteOffset, Element, Way};
+use {BlobReader, BlobType, ByteOffset, Element, PrimitiveBlock, Way};
 
 /// Stores the minimum and maximum id of every element type.
 #[derive(Debug)]
@@ -28,11 +28,49 @@ enum SimpleBlobType {
     Unknown,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ElementsAvailable {
+    Yes,
+    No,
+    Unknown,
+}
+
 #[derive(Debug)]
 struct BlobInfo {
     offset: ByteOffset,
     blob_type: SimpleBlobType,
     id_ranges: Option<IdRanges>,
+}
+
+impl BlobInfo {
+    /// Is there at least one node in this blob?
+    fn nodes_available(&self) -> ElementsAvailable {
+        match self.id_ranges {
+            Some(IdRanges {node_ids: Some(_), ..}) => ElementsAvailable::Yes,
+            Some(IdRanges {node_ids: None, ..}) => ElementsAvailable::No,
+            None => ElementsAvailable::Unknown,
+        }
+    }
+
+    /// Is there at least one way in this blob?
+    fn ways_available(&self) -> ElementsAvailable {
+        match self.id_ranges {
+            Some(IdRanges {way_ids: Some(_), ..}) => ElementsAvailable::Yes,
+            Some(IdRanges {way_ids: None, ..}) => ElementsAvailable::No,
+            None => ElementsAvailable::Unknown,
+        }
+    }
+
+    /*
+    /// Is there at least one relation in this blob?
+    fn relations_available(&self) -> ElementsAvailable {
+        match self.id_ranges {
+            Some(IdRanges {relation_ids: Some(_), ..}) => ElementsAvailable::Yes,
+            Some(IdRanges {relation_ids: None, ..}) => ElementsAvailable::No,
+            None => ElementsAvailable::Unknown,
+        }
+    }
+    */
 }
 
 /// Allows filtering elements and iterating over their dependencies.
@@ -72,6 +110,9 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         // remove old items
         self.index.clear();
 
+        // Seek to the beginning of the reader.
+        self.reader.seek(ByteOffset(0))?;
+
         while let Some(result) = self.reader.next_header_skip_blob() {
             let (header, offset) = result?;
             // Reader is seekable, so offset should be Some(ByteOffset)
@@ -92,8 +133,55 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         Ok(())
     }
 
+    /// Check element IDs of this block. Record min and max for every node, way and relation.
+    fn update_element_id_ranges(info: &mut BlobInfo, block: &PrimitiveBlock) {
+        let mut min_node_id: Option<i64> = None;
+        let mut max_node_id: Option<i64> = None;
+        let mut min_way_id: Option<i64> = None;
+        let mut max_way_id: Option<i64> = None;
+        let mut min_relation_id: Option<i64> = None;
+        let mut max_relation_id: Option<i64> = None;
+
+        // Check each primitive group
+        for group in block.groups() {
+            let check_min_max = |id, min_id: &mut Option<i64>, max_id: &mut Option<i64>| {
+                *min_id = Some(min_id.map_or(id, |x| x.min(id)));
+                *max_id = Some(max_id.map_or(id, |x| x.max(id)));
+            };
+
+            for node in group.nodes() {
+                check_min_max(node.id(), &mut min_node_id, &mut max_node_id);
+            }
+            for node in group.dense_nodes() {
+                check_min_max(node.id, &mut min_node_id, &mut max_node_id);
+            }
+            for way in group.ways() {
+                check_min_max(way.id(), &mut min_way_id, &mut max_way_id);
+            }
+            for relation in group.relations() {
+                check_min_max(relation.id(), &mut min_relation_id, &mut max_relation_id);
+            }
+        }
+
+        let to_range = |min_id, max_id| -> Option<RangeInclusive<i64>> {
+            if let (Some(min), Some(max)) = (min_id, max_id) {
+                Some(RangeInclusive::new(min, max))
+            } else {
+                None
+            }
+        };
+
+        info.id_ranges = Some(IdRanges {
+            node_ids: to_range(min_node_id, max_node_id),
+            way_ids: to_range(min_way_id, max_way_id),
+            relation_ids: to_range(min_relation_id, max_relation_id),
+        });
+    }
+
     /// Filter ways using a closure and return matching ways and their dependent nodes (`Node`s and
     /// `DenseNode`s) in another closure.
+    /// This method also creates a lightweight in-memory index that speeds up future invocations of
+    /// this or any other method of `IndexedReader`.
     ///
     /// # Example
     /// ```
@@ -143,10 +231,9 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
 
         // First pass:
         //   * Filter ways and store their dependencies as node IDs
-        //   * Store range of node IDs (min and max value) of each block
         for info in &mut self.index {
             //TODO do something useful with header blocks
-            if info.blob_type == SimpleBlobType::Primitive {
+            if info.blob_type == SimpleBlobType::Primitive && info.ways_available() != ElementsAvailable::No {
                 self.reader.seek(info.offset)?;
                 let blob = self.reader.next().ok_or_else(|| {
                     ::std::io::Error::new(
@@ -155,8 +242,11 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
                     )
                 })??;
                 let block = blob.to_primitiveblock()?;
-                let mut min_node_id: Option<i64> = None;
-                let mut max_node_id: Option<i64> = None;
+
+                if info.id_ranges.is_none() {
+                    Self::update_element_id_ranges(info, &block);
+                }
+
                 for group in block.groups() {
                     // filter ways and record node IDs
                     for way in group.ways() {
@@ -169,27 +259,6 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
                             element_callback(&Element::Way(way));
                         }
                     }
-
-                    // Check node IDs of this block, record min and max
-
-                    let mut check_min_max = |id| {
-                        min_node_id = Some(min_node_id.map_or(id, |x| x.min(id)));
-                        max_node_id = Some(max_node_id.map_or(id, |x| x.max(id)));
-                    };
-
-                    for node in group.nodes() {
-                        check_min_max(node.id())
-                    }
-                    for node in group.dense_nodes() {
-                        check_min_max(node.id)
-                    }
-                }
-                if let (Some(min), Some(max)) = (min_node_id, max_node_id) {
-                    info.id_ranges = Some(IdRanges {
-                        node_ids: Some(RangeInclusive::new(min, max)),
-                        way_ids: None,
-                        relation_ids: None,
-                    });
                 }
             }
         }
@@ -197,7 +266,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         // Second pass:
         //   * Iterate only over blobs that may include the node IDs we're searching for
         for info in &mut self.index {
-            if info.blob_type == SimpleBlobType::Primitive {
+            if info.blob_type == SimpleBlobType::Primitive && info.nodes_available() != ElementsAvailable::No {
                 if let Some(node_id_range) =
                     info.id_ranges.as_ref().and_then(|r| r.node_ids.as_ref())
                 {
@@ -227,6 +296,75 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Decodes the PBF structure sequentially and calls the given closure on each node.
+    /// This method also creates a lightweight in-memory index that speeds up future invocations of
+    /// this or any other method of `IndexedReader`.
+    ///
+    /// # Errors
+    /// Returns the first Error encountered while parsing the PBF structure.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let mut reader = IndexedReader::from_path("tests/test.osm.pbf")?;
+    /// let mut nodes = 0;
+    ///
+    /// reader.for_each_node(
+    ///     |element| {
+    ///         match element {
+    ///             Element::Node(node) => nodes += 1,
+    ///             Element::DenseNode(dense_node) => nodes += 1,
+    ///             _ => {}
+    ///         }
+    ///     },
+    /// )?;
+    ///
+    /// println!("nodes: {}", nodes);
+    ///
+    /// # assert_eq!(nodes, 3);
+    /// # Ok(())
+    /// # }
+    /// # foo().unwrap();
+    /// ```
+    pub fn for_each_node<F>(&mut self, mut f: F) -> Result<()>
+    where
+        F: for<'a> FnMut(Element<'a>),
+    {
+        // Create index
+        if self.index.is_empty() {
+            self.create_index()?;
+        }
+
+        for info in &mut self.index {
+            // Skip header blobs and blobs where there are certainly no nodes available.
+            if info.blob_type == SimpleBlobType::Primitive && info.nodes_available() != ElementsAvailable::No {
+                self.reader.seek(info.offset)?;
+                let blob = self.reader.next().ok_or_else(|| {
+                    ::std::io::Error::new(
+                        ::std::io::ErrorKind::UnexpectedEof,
+                        "could not read next blob",
+                    )
+                })??;
+                let block = blob.to_primitiveblock()?;
+                if info.id_ranges.is_none() {
+                    Self::update_element_id_ranges(info, &block);
+                }
+                for group in block.groups() {
+                    for node in group.nodes() {
+                        f(Element::Node(node));
+                    }
+                    for dense_node in group.dense_nodes() {
+                        f(Element::DenseNode(dense_node));
                     }
                 }
             }
