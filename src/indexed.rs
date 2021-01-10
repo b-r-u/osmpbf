@@ -106,9 +106,14 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         })
     }
 
+    /// Initializes the index of the PBF structure without decompressing the blobs.
+    /// You do not need to call this method explicitly as the other methods already take care of
+    /// it.
     pub fn create_index(&mut self) -> Result<()> {
-        // remove old items
-        self.index.clear();
+        if !self.index.is_empty() {
+            // Index is already present -> Do nothing
+            return Ok(());
+        }
 
         // Seek to the beginning of the reader.
         self.reader.seek(ByteOffset(0))?;
@@ -135,6 +140,11 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
 
     /// Check element IDs of this block. Record min and max for every node, way and relation.
     fn update_element_id_ranges(info: &mut BlobInfo, block: &PrimitiveBlock) {
+        if info.id_ranges.is_some() {
+            // Ranges are already present -> Do nothing
+            return;
+        }
+
         let mut min_node_id: Option<i64> = None;
         let mut max_node_id: Option<i64> = None;
         let mut min_way_id: Option<i64> = None;
@@ -222,10 +232,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         F: for<'a> FnMut(&Way<'a>) -> bool,
         E: for<'a> FnMut(&Element<'a>),
     {
-        // Create index
-        if self.index.is_empty() {
-            self.create_index()?;
-        }
+        self.create_index()?;
 
         let mut node_ids: BTreeSet<i64> = BTreeSet::new();
 
@@ -242,10 +249,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
                     )
                 })??;
                 let block = blob.to_primitiveblock()?;
-
-                if info.id_ranges.is_none() {
-                    Self::update_element_id_ranges(info, &block);
-                }
+                Self::update_element_id_ranges(info, &block);
 
                 for group in block.groups() {
                     // filter ways and record node IDs
@@ -340,10 +344,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
     where
         F: for<'a> FnMut(Element<'a>),
     {
-        // Create index
-        if self.index.is_empty() {
-            self.create_index()?;
-        }
+        self.create_index()?;
 
         for info in &mut self.index {
             // Skip header blobs and blobs where there are certainly no nodes available.
@@ -356,9 +357,8 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
                     )
                 })??;
                 let block = blob.to_primitiveblock()?;
-                if info.id_ranges.is_none() {
-                    Self::update_element_id_ranges(info, &block);
-                }
+                Self::update_element_id_ranges(info, &block);
+
                 for group in block.groups() {
                     for node in group.nodes() {
                         f(Element::Node(node));
