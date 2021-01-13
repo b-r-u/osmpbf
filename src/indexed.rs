@@ -8,19 +8,6 @@ use std::ops::RangeInclusive;
 use std::path::Path;
 use {BlobReader, BlobType, ByteOffset, Element, PrimitiveBlock, Way};
 
-/// Stores the minimum and maximum id of every element type.
-#[derive(Debug)]
-pub struct IdRanges {
-    node_ids: Option<RangeInclusive<i64>>,
-    way_ids: Option<RangeInclusive<i64>>,
-    relation_ids: Option<RangeInclusive<i64>>,
-}
-
-/// Returns true if the given set contains at least one value that is inside the given range.
-fn range_included(range: RangeInclusive<i64>, node_ids: &BTreeSet<i64>) -> bool {
-    node_ids.range(range).next().is_some()
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SimpleBlobType {
     Header,
@@ -35,6 +22,27 @@ enum ElementsAvailable {
     Unknown,
 }
 
+/// Returns true if the given set contains at least one value that is inside the given range.
+fn range_included(range: RangeInclusive<i64>, node_ids: &BTreeSet<i64>) -> bool {
+    node_ids.range(range).next().is_some()
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum RangeIncluded {
+    Yes(RangeInclusive<i64>),
+    No,
+    Unknown,
+}
+
+/// Stores the minimum and maximum id of every element type.
+#[derive(Debug)]
+pub struct IdRanges {
+    node_ids: Option<RangeInclusive<i64>>,
+    way_ids: Option<RangeInclusive<i64>>,
+    relation_ids: Option<RangeInclusive<i64>>,
+}
+
+/// A part of the index that stores information about a specific blob.
 #[derive(Debug)]
 struct BlobInfo {
     offset: ByteOffset,
@@ -71,6 +79,22 @@ impl BlobInfo {
         }
     }
     */
+
+    /// Compute if the range of node IDs of this blob (min and max ID value) is included in the
+    /// given set of IDs with at least one ID inside of this range.
+    fn node_range_included(&self, node_ids: &BTreeSet<i64>) -> RangeIncluded {
+        match self.id_ranges.as_ref() {
+            None => RangeIncluded::Unknown,
+            Some(IdRanges { node_ids: None, .. }) => RangeIncluded::No,
+            Some(IdRanges { node_ids: Some(range), .. }) => {
+                if range_included(range.clone(), node_ids) {
+                    RangeIncluded::Yes(range.clone())
+                } else {
+                    RangeIncluded::No
+                }
+            },
+        }
+    }
 }
 
 /// Allows filtering elements and iterating over their dependencies.
@@ -270,35 +294,28 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         // Second pass:
         //   * Iterate only over blobs that may include the node IDs we're searching for
         for info in &mut self.index {
-            if info.blob_type == SimpleBlobType::Primitive && info.nodes_available() != ElementsAvailable::No {
-                if let Some(node_id_range) =
-                    info.id_ranges.as_ref().and_then(|r| r.node_ids.as_ref())
-                {
-                    if range_included(node_id_range.clone(), &node_ids) {
-                        //TODO Only collect into Vec if range has a reasonable size
-                        let node_ids: Vec<i64> =
-                            node_ids.range(node_id_range.clone()).copied().collect();
-                        self.reader.seek(info.offset)?;
-                        let blob = self.reader.next().ok_or_else(|| {
-                            ::std::io::Error::new(
-                                ::std::io::ErrorKind::UnexpectedEof,
-                                "could not read next blob",
-                            )
-                        })??;
-                        let block = blob.to_primitiveblock()?;
-                        for group in block.groups() {
-                            for node in group.nodes() {
-                                if node_ids.binary_search(&node.id()).is_ok() {
-                                    // ID found, return node
-                                    element_callback(&Element::Node(node));
-                                }
-                            }
-                            for node in group.dense_nodes() {
-                                if node_ids.binary_search(&node.id).is_ok() {
-                                    // ID found, return dense node
-                                    element_callback(&Element::DenseNode(node));
-                                }
-                            }
+            if let RangeIncluded::Yes(node_id_range) = info.node_range_included(&node_ids) {
+                //TODO Only collect into Vec if range has a reasonable size
+                let node_ids: Vec<i64> = node_ids.range(node_id_range).copied().collect();
+                self.reader.seek(info.offset)?;
+                let blob = self.reader.next().ok_or_else(|| {
+                    ::std::io::Error::new(
+                        ::std::io::ErrorKind::UnexpectedEof,
+                        "could not read next blob",
+                    )
+                })??;
+                let block = blob.to_primitiveblock()?;
+                for group in block.groups() {
+                    for node in group.nodes() {
+                        if node_ids.binary_search(&node.id()).is_ok() {
+                            // ID found, return node
+                            element_callback(&Element::Node(node));
+                        }
+                    }
+                    for node in group.dense_nodes() {
+                        if node_ids.binary_search(&node.id).is_ok() {
+                            // ID found, return dense node
+                            element_callback(&Element::DenseNode(node));
                         }
                     }
                 }
