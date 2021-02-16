@@ -21,6 +21,12 @@ pub struct DenseNode<'a> {
 }
 
 impl<'a> DenseNode<'a> {
+    /// Returns the node id. It should be unique between nodes and might be negative to indicate
+    /// that the element has not yet been uploaded to a server.
+    pub fn id(&self) -> i64 {
+        self.id
+    }
+
     /// return optional metadata about the ndode
     pub fn info(&'a self) -> Option<&'a DenseNodeInfo<'a>> {
         self.info.as_ref()
