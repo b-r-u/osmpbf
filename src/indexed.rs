@@ -265,14 +265,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         for info in &mut self.index {
             //TODO do something useful with header blocks
             if info.blob_type == SimpleBlobType::Primitive && info.ways_available() != ElementsAvailable::No {
-                self.reader.seek(info.offset)?;
-                let blob = self.reader.next().ok_or_else(|| {
-                    ::std::io::Error::new(
-                        ::std::io::ErrorKind::UnexpectedEof,
-                        "could not read next blob",
-                    )
-                })??;
-                let block = blob.to_primitiveblock()?;
+                let block = self.reader.blob_from_offset(info.offset)?.to_primitiveblock()?;
                 Self::update_element_id_ranges(info, &block);
 
                 for group in block.groups() {
@@ -297,14 +290,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
             if let RangeIncluded::Yes(node_id_range) = info.node_range_included(&node_ids) {
                 //TODO Only collect into Vec if range has a reasonable size
                 let node_ids: Vec<i64> = node_ids.range(node_id_range).copied().collect();
-                self.reader.seek(info.offset)?;
-                let blob = self.reader.next().ok_or_else(|| {
-                    ::std::io::Error::new(
-                        ::std::io::ErrorKind::UnexpectedEof,
-                        "could not read next blob",
-                    )
-                })??;
-                let block = blob.to_primitiveblock()?;
+                let block = self.reader.blob_from_offset(info.offset)?.to_primitiveblock()?;
                 for group in block.groups() {
                     for node in group.nodes() {
                         if node_ids.binary_search(&node.id()).is_ok() {
@@ -366,14 +352,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         for info in &mut self.index {
             // Skip header blobs and blobs where there are certainly no nodes available.
             if info.blob_type == SimpleBlobType::Primitive && info.nodes_available() != ElementsAvailable::No {
-                self.reader.seek(info.offset)?;
-                let blob = self.reader.next().ok_or_else(|| {
-                    ::std::io::Error::new(
-                        ::std::io::ErrorKind::UnexpectedEof,
-                        "could not read next blob",
-                    )
-                })??;
-                let block = blob.to_primitiveblock()?;
+                let block = self.reader.blob_from_offset(info.offset)?.to_primitiveblock()?;
                 Self::update_element_id_ranges(info, &block);
 
                 for group in block.groups() {
