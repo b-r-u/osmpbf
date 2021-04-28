@@ -5,7 +5,7 @@ extern crate protobuf;
 
 use block::{HeaderBlock, PrimitiveBlock};
 use byteorder::ReadBytesExt;
-use error::{new_blob_error, new_protobuf_error, BlobError, Result};
+use error::{new_blob_error, new_error, new_protobuf_error, BlobError, ErrorKind, Result};
 use proto::fileformat;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -318,6 +318,36 @@ impl<R: Read + Seek + Send> BlobReader<R> {
             reader,
             offset: Some(ByteOffset(pos)),
             last_blob_ok: true,
+        })
+    }
+
+    /// Read and return the `Blob` at the given offset. If successful, the cursor of the stream is
+    /// positioned at the start of the next `Blob`.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let mut reader = BlobReader::from_path("tests/test.osm.pbf")?;
+    /// let first_blob = reader.next().unwrap()?;
+    /// let second_blob = reader.next().unwrap()?;
+    ///
+    /// let first_blob_again = reader.blob_from_offset(first_blob.offset())?;
+    /// assert_eq!(first_blob.offset(), first_blob_again.offset());
+    /// # Ok(())
+    /// # }
+    /// # foo().unwrap();
+    /// ```
+    pub fn blob_from_offset(&mut self, pos: ByteOffset) -> Result<Blob> {
+        self.seek(pos)?;
+        self.next().unwrap_or_else(|| {
+            Err(new_error(ErrorKind::Io(
+                ::std::io::Error::new(
+                    ::std::io::ErrorKind::UnexpectedEof,
+                    "no blob at this stream position",
+                )
+            )))
         })
     }
 
