@@ -229,6 +229,7 @@ impl<R: Read + Send> BlobReader<R> {
 
 impl BlobReader<BufReader<File>> {
     /// Tries to open the file at the given path and constructs a `BlobReader` from this.
+    /// If there are no errors, each blob will have a valid (`Some`) offset.
     ///
     /// # Errors
     /// Returns the same errors that `std::fs::File::open` returns.
@@ -333,7 +334,8 @@ impl<R: Read + Seek + Send> BlobReader<R> {
     /// let first_blob = reader.next().unwrap()?;
     /// let second_blob = reader.next().unwrap()?;
     ///
-    /// let first_blob_again = reader.blob_from_offset(first_blob.offset())?;
+    /// let offset = first_blob.offset().unwrap();
+    /// let first_blob_again = reader.blob_from_offset(offset)?;
     /// assert_eq!(first_blob.offset(), first_blob_again.offset());
     /// # Ok(())
     /// # }
