@@ -552,4 +552,9 @@ impl<'a> Info<'a> {
             true
         }
     }
+
+    /// Returns the deleted status of an element.
+    pub fn deleted(&self) -> bool {
+        !self.visible()
+    }
 }
