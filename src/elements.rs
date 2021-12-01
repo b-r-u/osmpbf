@@ -553,7 +553,8 @@ impl<'a> Info<'a> {
         }
     }
 
-    /// Returns the deleted status of an element.
+    /// Returns true if the element was deleted.
+    /// This is a convenience function that just returns the inverse of `Info::visible`.
     pub fn deleted(&self) -> bool {
         !self.visible()
     }

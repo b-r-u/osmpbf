@@ -191,8 +191,10 @@ pub struct DenseNodeInfo<'a> {
     changeset: i64,
     /// The user id.
     uid: i32,
-    // String IDs for usernames.
+    /// String IDs for usernames.
     user_sid: i32,
+    /// Is the element visible (true) or was it deleted (false).
+    visible: bool,
 }
 
 impl<'a> DenseNodeInfo<'a> {
@@ -220,6 +222,18 @@ impl<'a> DenseNodeInfo<'a> {
     pub fn milli_timestamp(&self) -> i64 {
         self.timestamp * i64::from(self.block.get_date_granularity())
     }
+
+    /// Returns the visibility status of an element. This is only relevant if the PBF file contains
+    /// historical information.
+    pub fn visible(&self) -> bool {
+        self.visible
+    }
+
+    /// Returns true if the element was deleted.
+    /// This is a convenience function that just returns the inverse of `DenseNodeInfo::visible`.
+    pub fn deleted(&self) -> bool {
+        !self.visible
+    }
 }
 
 /// An iterator over dense nodes info. It decodes the delta encoded values.
@@ -235,6 +249,7 @@ pub struct DenseNodeInfoIter<'a> {
     cuid: i32,
     duser_sids: std::slice::Iter<'a, i32>, // deltas
     cuser_sid: i32,
+    visible: std::slice::Iter<'a, bool>,
 }
 
 impl<'a> DenseNodeInfoIter<'a> {
@@ -253,6 +268,7 @@ impl<'a> DenseNodeInfoIter<'a> {
             cuid: 0,
             duser_sids: info.get_user_sid().iter(),
             cuser_sid: 0,
+            visible: info.get_visible().iter(),
         }
     }
 }
@@ -267,8 +283,14 @@ impl<'a> Iterator for DenseNodeInfoIter<'a> {
             self.dchangesets.next(),
             self.duids.next(),
             self.duser_sids.next(),
+            self.visible.next(),
         ) {
-            (Some(&version), Some(dtimestamp), Some(dchangeset), Some(duid), Some(duser_sid)) => {
+            (Some(&version),
+             Some(dtimestamp),
+             Some(dchangeset),
+             Some(duid),
+             Some(duser_sid),
+             visible_opt) => {
                 self.ctimestamp += *dtimestamp;
                 self.cchangeset += *dchangeset;
                 self.cuid += *duid;
@@ -280,6 +302,7 @@ impl<'a> Iterator for DenseNodeInfoIter<'a> {
                     changeset: self.cchangeset,
                     uid: self.cuid,
                     user_sid: self.cuser_sid,
+                    visible: *visible_opt.unwrap_or(&true),
                 })
             }
             _ => None,
