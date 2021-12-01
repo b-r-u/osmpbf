@@ -8,6 +8,10 @@ static TEST_FILE_PATHS: [&str; 3] = [
     "tests/test_nozlib_nodense.osm.pbf",
 ];
 
+// This file was taken from the libosmium test suite.
+// https://osmcode.org/libosmium/
+static HISTORY_FILE_PATH: &str = "tests/deleted_nodes.osh.pbf";
+
 fn approx_eq(a: f64, b: f64) -> bool {
     (a - b).abs() < 1.0e-6
 }
@@ -15,7 +19,10 @@ fn approx_eq(a: f64, b: f64) -> bool {
 // Compare the content of a HeaderBlock with known values from the test file.
 fn check_header_block_content(block: &HeaderBlock) {
     for feature in block.required_features() {
-        if feature != "OsmSchema-V0.6" && feature != "DenseNodes" {
+        if feature != "OsmSchema-V0.6" &&
+           feature != "DenseNodes" &&
+           feature != "HistoricalInformation"
+        {
             panic!("unknown required feature: {}", feature);
         }
     }
@@ -53,6 +60,10 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
         assert_eq!(nodes[0].info().uid(), Some(17));
         assert_eq!(nodes[1].info().uid(), Some(17));
         assert_eq!(nodes[2].info().uid(), Some(17));
+
+        assert_eq!(nodes[0].info().visible(), true);
+        assert_eq!(nodes[1].info().visible(), true);
+        assert_eq!(nodes[2].info().visible(), true);
     }
 
     let dense_nodes: Vec<_> = block.groups().flat_map(|g| g.dense_nodes()).collect();
@@ -84,6 +95,10 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
         assert_eq!(dense_nodes[0].info().map(|x| x.uid()), Some(17));
         assert_eq!(dense_nodes[1].info().map(|x| x.uid()), Some(17));
         assert_eq!(dense_nodes[2].info().map(|x| x.uid()), Some(17));
+
+        assert_eq!(dense_nodes[0].info().map(|x| x.visible()), Some(true));
+        assert_eq!(dense_nodes[1].info().map(|x| x.visible()), Some(true));
+        assert_eq!(dense_nodes[2].info().map(|x| x.visible()), Some(true));
     }
 
     {
@@ -228,4 +243,25 @@ fn read_ways_and_deps() {
         assert_eq!(ways, 1);
         assert_eq!(nodes, 3);
     }
+}
+
+#[test]
+fn read_history_file() {
+    let reader = BlobReader::from_path(HISTORY_FILE_PATH).unwrap();
+    let blobs = reader.collect::<Result<Vec<_>>>().unwrap();
+
+    assert_eq!(blobs.len(), 2);
+    assert_eq!(blobs[0].get_type(), BlobType::OsmHeader);
+    assert_eq!(blobs[1].get_type(), BlobType::OsmData);
+
+    let header = blobs[0].to_headerblock().unwrap();
+    check_header_block_content(&header);
+
+    let primitive_block = blobs[1].to_primitiveblock().unwrap();
+    let nodes: Vec<_> = primitive_block.groups().flat_map(|g| g.dense_nodes()).collect();
+
+    assert_eq!(nodes.len(), 2);
+
+    assert_eq!(nodes[0].info().unwrap().visible(), false);
+    assert_eq!(nodes[1].info().unwrap().visible(), true);
 }
