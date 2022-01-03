@@ -12,9 +12,6 @@ categories = ["parser-implementations", "encoding", "science"]
 keywords = ["openstreetmap", "osm", "pbf", "protocolbuffer", "protobuf"]
 license = "MIT/Apache-2.0"
 
-[badges]
-appveyor = { repository = "b-r-u/osmpbf" }
-
 [features]
 default = ["system-libz"]
 system-libz = ["flate2"]
