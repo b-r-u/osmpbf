@@ -5,7 +5,6 @@ strives to offer the best performance using parallelization and lazy-decoding
 with a simple interface while also exposing iterators for items of every level
 in a PBF file.
 
-[![Build Status](https://travis-ci.org/b-r-u/osmpbf.svg?branch=master)](https://travis-ci.org/b-r-u/osmpbf)
 [![Build status](https://ci.appveyor.com/api/projects/status/1ct6i2gjsak8tgyy?svg=true)](https://ci.appveyor.com/project/b-r-u/osmpbf)
 [![Crates.io](https://img.shields.io/crates/v/osmpbf.svg)](https://crates.io/crates/osmpbf)
 [![Documentation](https://docs.rs/osmpbf/badge.svg)](https://docs.rs/osmpbf)
