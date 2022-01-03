@@ -39,6 +39,8 @@ enum RangeIncluded {
 pub struct IdRanges {
     node_ids: Option<RangeInclusive<i64>>,
     way_ids: Option<RangeInclusive<i64>>,
+    //TODO actually use this field
+    #[allow(dead_code)]
     relation_ids: Option<RangeInclusive<i64>>,
 }
 

@@ -117,7 +117,6 @@ impl<'a> Node<'a> {
     /// `PrimitiveBlock`.
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
-            block: self.block,
             key_indices: self.osmnode.get_keys().iter(),
             val_indices: self.osmnode.get_vals().iter(),
         }
@@ -208,7 +207,6 @@ impl<'a> Way<'a> {
     /// `PrimitiveBlock`.
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
-            block: self.block,
             key_indices: self.osmway.get_keys().iter(),
             val_indices: self.osmway.get_vals().iter(),
         }
@@ -289,7 +287,6 @@ impl<'a> Relation<'a> {
     /// `PrimitiveBlock`.
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
-            block: self.block,
             key_indices: self.osmrel.get_keys().iter(),
             val_indices: self.osmrel.get_vals().iter(),
         }
@@ -459,7 +456,6 @@ impl<'a> ExactSizeIterator for TagIter<'a> {}
 /// stringtable of the current `PrimitiveBlock`.
 #[derive(Clone, Debug)]
 pub struct RawTagIter<'a> {
-    block: &'a PrimitiveBlock,
     key_indices: std::slice::Iter<'a, u32>,
     val_indices: std::slice::Iter<'a, u32>,
 }
