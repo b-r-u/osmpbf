@@ -41,6 +41,7 @@ impl Error {
 }
 
 /// The specific type of an error.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum ErrorKind {
     /// An error for I/O operations.
@@ -59,16 +60,10 @@ pub enum ErrorKind {
     Blob(BlobError),
 
     //TODO add UnexpectedPrimitiveBlock
-    /// Hints that destructuring should not be exhaustive.
-    ///
-    /// This enum may grow additional variants, so this makes sure clients
-    /// don't count on exhaustive matching. (Otherwise, adding a new variant
-    /// could break existing code.)
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 /// An error that occurs when decoding a blob.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum BlobError {
     /// Header size could not be decoded to a u32.
@@ -85,9 +80,6 @@ pub enum BlobError {
     },
     /// The blob is empty because the `raw` and `zlib-data` fields are missing.
     Empty,
-    /// Hints that destructuring should not be exhaustive.
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl From<io::Error> for Error {
@@ -138,7 +130,6 @@ impl StdError for Error {
             ErrorKind::Blob(BlobError::HeaderTooBig { .. }) => "blob header is too big",
             ErrorKind::Blob(BlobError::MessageTooBig { .. }) => "blob message is too big",
             ErrorKind::Blob(BlobError::Empty) => "blob is missing fields 'raw' and 'zlib_data",
-            _ => unreachable!(),
         }
     }
 
@@ -152,7 +143,6 @@ impl StdError for Error {
             ErrorKind::Blob(BlobError::HeaderTooBig { .. }) => None,
             ErrorKind::Blob(BlobError::MessageTooBig { .. }) => None,
             ErrorKind::Blob(BlobError::Empty) => None,
-            _ => unreachable!(),
         }
     }
 }
@@ -182,7 +172,6 @@ impl fmt::Display for Error {
             ErrorKind::Blob(BlobError::Empty) => {
                 write!(f, "blob is missing fields 'raw' and 'zlib_data'")
             }
-            _ => unreachable!(),
         }
     }
 }
