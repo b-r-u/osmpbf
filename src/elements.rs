@@ -10,12 +10,12 @@ use std;
 /// An enum with the OSM core elements: nodes, ways and relations.
 #[derive(Clone, Debug)]
 pub enum Element<'a> {
-    /// A node. Also, see `DenseNode`.
+    /// A node. Also, see [`DenseNode`](Self::DenseNode).
     Node(Node<'a>),
 
-    /// Just like `Node`, but with a different representation in memory. This distinction is
+    /// Just like [`Node`](Self::Node), but with a different representation in memory. This distinction is
     /// usually not important but is not abstracted away to avoid copying. So, if you want to match
-    /// `Node`, you also likely want to match `DenseNode`.
+    /// `Node`, you also likely want to match [`DenseNode`].
     DenseNode(DenseNode<'a>),
 
     /// A way.
@@ -114,7 +114,7 @@ impl<'a> Node<'a> {
     /// Returns an iterator over the tags of this node
     /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
     /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
-    /// `PrimitiveBlock`.
+    /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
             key_indices: self.osmnode.get_keys().iter(),
@@ -204,7 +204,7 @@ impl<'a> Way<'a> {
     /// Returns an iterator over the tags of this way
     /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
     /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
-    /// `PrimitiveBlock`.
+    /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
             key_indices: self.osmway.get_keys().iter(),
@@ -284,7 +284,7 @@ impl<'a> Relation<'a> {
     /// Returns an iterator over the tags of this relation
     /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
     /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
-    /// `PrimitiveBlock`.
+    /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
             key_indices: self.osmrel.get_keys().iter(),
@@ -453,7 +453,7 @@ impl<'a> Iterator for TagIter<'a> {
 impl<'a> ExactSizeIterator for TagIter<'a> {}
 
 /// An iterator over the tags of an element. It returns a pair of indices (key and value) to the
-/// stringtable of the current `PrimitiveBlock`.
+/// stringtable of the current [`PrimitiveBlock`](crate::block::PrimitiveBlock).
 #[derive(Clone, Debug)]
 pub struct RawTagIter<'a> {
     key_indices: std::slice::Iter<'a, u32>,
@@ -550,7 +550,7 @@ impl<'a> Info<'a> {
     }
 
     /// Returns true if the element was deleted.
-    /// This is a convenience function that just returns the inverse of `Info::visible`.
+    /// This is a convenience function that just returns the inverse of [`Info::visible`].
     pub fn deleted(&self) -> bool {
         !self.visible()
     }

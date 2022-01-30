@@ -214,8 +214,9 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         });
     }
 
-    /// Filter ways using a closure and return matching ways and their dependent nodes (`Node`s and
-    /// `DenseNode`s) in another closure.
+    /// Filter ways using a closure and return matching ways and their dependent nodes
+    /// ([`Node`](crate::elements::Node)s and [`DenseNode`](crate::dense::DenseNode)s)
+    /// in another closure.
     /// This method also creates a lightweight in-memory index that speeds up future invocations of
     /// this or any other method of `IndexedReader`.
     ///

@@ -18,18 +18,18 @@ use flate2::read::ZlibDecoder;
 #[cfg(not(feature = "system-libz"))]
 use inflate::DeflateDecoder;
 
-/// Maximum allowed `BlobHeader` size in bytes.
+/// Maximum allowed [`BlobHeader`] size in bytes.
 pub static MAX_BLOB_HEADER_SIZE: u64 = 64 * 1024;
 
-/// Maximum allowed uncompressed `Blob` content size in bytes.
+/// Maximum allowed uncompressed [`Blob`] content size in bytes.
 pub static MAX_BLOB_MESSAGE_SIZE: u64 = 32 * 1024 * 1024;
 
 /// The content type of a blob.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BlobType<'a> {
-    /// Blob contains a `HeaderBlock`.
+    /// Blob contains a [`HeaderBlock`].
     OsmHeader,
-    /// Blob contains a `PrimitiveBlock`.
+    /// Blob contains a [`PrimitiveBlock`].
     OsmData,
     /// An unknown blob type with the given string identifier.
     /// Parsers should ignore unknown blobs they do not expect.
@@ -37,12 +37,12 @@ pub enum BlobType<'a> {
 }
 
 //TODO rename variants to fit proto files
-/// The decoded content of a blob (analogous to `BlobType`).
+/// The decoded content of a blob (analogous to [`BlobType`]).
 #[derive(Clone, Debug)]
 pub enum BlobDecode<'a> {
-    /// Blob contains a `HeaderBlock`.
+    /// Blob contains a [`HeaderBlock`].
     OsmHeader(Box<HeaderBlock>),
-    /// Blob contains a `PrimitiveBlock`.
+    /// Blob contains a [`PrimitiveBlock`].
     OsmData(PrimitiveBlock),
     /// An unknown blob type with the given string identifier.
     /// Parsers should ignore unknown blobs they do not expect.
@@ -77,8 +77,8 @@ impl Blob {
         }
     }
 
-    /// Decodes the Blob and tries to obtain the inner content (usually a `HeaderBlock` or a
-    /// `PrimitiveBlock`). This operation might involve an expensive decompression step.
+    /// Decodes the Blob and tries to obtain the inner content (usually a [`HeaderBlock`] or a
+    /// [`PrimitiveBlock`]). This operation might involve an expensive decompression step.
     pub fn decode(&self) -> Result<BlobDecode> {
         match self.get_type() {
             BlobType::OsmHeader => {
@@ -103,18 +103,18 @@ impl Blob {
     }
 
     /// Returns the byte offset of the blob from the start of its source stream.
-    /// This might be `None` if the source stream does not implement `Seek`.
+    /// This might be [`None`] if the source stream does not implement [`Seek`].
     pub fn offset(&self) -> Option<ByteOffset> {
         self.offset
     }
 
-    /// Tries to decode the blob to a `HeaderBlock`. This operation might involve an expensive
+    /// Tries to decode the blob to a [`HeaderBlock`]. This operation might involve an expensive
     /// decompression step.
     pub fn to_headerblock(&self) -> Result<HeaderBlock> {
         decode_blob(&self.blob).map(HeaderBlock::new)
     }
 
-    /// Tries to decode the blob to a `PrimitiveBlock`. This operation might involve an expensive
+    /// Tries to decode the blob to a [`PrimitiveBlock`]. This operation might involve an expensive
     /// decompression step.
     pub fn to_primitiveblock(&self) -> Result<PrimitiveBlock> {
         decode_blob(&self.blob).map(PrimitiveBlock::new)
@@ -123,7 +123,7 @@ impl Blob {
 
 /// A blob header.
 ///
-/// Just contains information about the size and type of the following `Blob`.
+/// Just contains information about the size and type of the following [`Blob`].
 #[derive(Clone, Debug)]
 pub struct BlobHeader {
     header: fileformat::BlobHeader,
@@ -149,7 +149,7 @@ impl BlobHeader {
     }
 }
 
-/// A reader for PBF files that allows iterating over `Blob`s.
+/// A reader for PBF files that allows iterating over [`Blob`]s.
 #[derive(Clone, Debug)]
 pub struct BlobReader<R: Read + Send> {
     reader: R,
@@ -229,7 +229,7 @@ impl<R: Read + Send> BlobReader<R> {
 
 impl BlobReader<BufReader<File>> {
     /// Tries to open the file at the given path and constructs a `BlobReader` from this.
-    /// If there are no errors, each blob will have a valid (`Some`) offset.
+    /// If there are no errors, each blob will have a valid ([`Some`]) offset.
     ///
     /// # Errors
     /// Returns the same errors that `std::fs::File::open` returns.
@@ -322,8 +322,8 @@ impl<R: Read + Seek + Send> BlobReader<R> {
         })
     }
 
-    /// Read and return the `Blob` at the given offset. If successful, the cursor of the stream is
-    /// positioned at the start of the next `Blob`.
+    /// Read and return the [`Blob`] at the given offset. If successful, the cursor of the stream is
+    /// positioned at the start of the next [`Blob`].
     ///
     /// # Example
     /// ```
@@ -399,10 +399,10 @@ impl<R: Read + Seek + Send> BlobReader<R> {
         }
     }
 
-    /// Read and return next `BlobHeader` but skip the following `Blob`. This allows really fast
-    /// iteration of the PBF structure if only the byte offset and `BlobType` are important.
-    /// On success, returns the `BlobHeader` and the byte offset of the header which can also be
-    /// used as an offset for reading the entire `Blob` (including header).
+    /// Read and return next [`BlobHeader`] but skip the following [`Blob`]. This allows really fast
+    /// iteration of the PBF structure if only the byte offset and [`BlobType`] are important.
+    /// On success, returns the [`BlobHeader`] and the byte offset of the header which can also be
+    /// used as an offset for reading the entire [`Blob`] (including header).
     pub fn next_header_skip_blob(&mut self) -> Option<Result<(BlobHeader, Option<ByteOffset>)>> {
         // Stop iteration if there was an error.
         if !self.last_blob_ok {

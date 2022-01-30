@@ -88,8 +88,8 @@ pub struct MmapBlob<'a> {
 }
 
 impl<'a> MmapBlob<'a> {
-    /// Decodes the Blob and tries to obtain the inner content (usually a `HeaderBlock` or a
-    /// `PrimitiveBlock`). This operation might involve an expensive decompression step.
+    /// Decodes the blob and tries to obtain the inner content (usually a [`HeaderBlock`] or a
+    /// [`PrimitiveBlock`]). This operation might involve an expensive decompression step.
     pub fn decode(&'a self) -> Result<BlobDecode<'a>> {
         let blob: fileformat::Blob = parse_message_from_bytes(self.data)
             .map_err(|e| new_protobuf_error(e, "blob content"))?;
@@ -121,7 +121,7 @@ impl<'a> MmapBlob<'a> {
     }
 }
 
-/// A reader for memory mapped PBF files that allows iterating over `MmapBlob`s.
+/// A reader for memory mapped PBF files that allows iterating over [`MmapBlob`]s.
 #[derive(Clone, Debug)]
 pub struct MmapBlobReader<'a> {
     mmap: &'a Mmap,

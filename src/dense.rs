@@ -73,7 +73,7 @@ impl<'a> DenseNode<'a> {
     /// Returns an iterator over the tags of this node
     /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
     /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
-    /// `PrimitiveBlock`.
+    /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
     pub fn raw_tags(&self) -> DenseRawTagIter<'a> {
         DenseRawTagIter {
             keys_vals_indices: self.keys_vals_indices.iter(),
@@ -345,7 +345,7 @@ impl<'a> Iterator for DenseTagIter<'a> {
 impl<'a> ExactSizeIterator for DenseTagIter<'a> {}
 
 /// An iterator over the tags of a node. It returns a pair of indices (key and value) to the
-/// stringtable of the current `PrimitiveBlock`.
+/// stringtable of the current [`PrimitiveBlock`](crate::block::PrimitiveBlock).
 #[derive(Clone, Debug)]
 pub struct DenseRawTagIter<'a> {
     keys_vals_indices: std::slice::Iter<'a, i32>,

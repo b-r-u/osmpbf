@@ -6,7 +6,7 @@ use error::{new_error, ErrorKind, Result};
 use proto::osmformat;
 use std;
 
-/// A `HeaderBlock`. It contains metadata about following `PrimitiveBlock`s.
+/// A `HeaderBlock`. It contains metadata about following [`PrimitiveBlock`]s.
 #[derive(Clone, Debug)]
 pub struct HeaderBlock {
     header: osmformat::HeaderBlock,
@@ -18,7 +18,7 @@ impl HeaderBlock {
     }
 
     /// Returns a list of required features that a parser needs to implement to parse the following
-    /// `PrimitiveBlock`s.
+    /// [`PrimitiveBlock`]s.
     pub fn required_features(&self) -> &[String] {
         self.header.get_required_features()
     }
@@ -116,7 +116,7 @@ impl<'a> PrimitiveGroup<'a> {
     }
 }
 
-/// An iterator over the elements in a `PrimitiveGroup`.
+/// An iterator over the elements in a [`PrimitiveGroup`].
 #[derive(Clone, Debug)]
 pub struct BlockElementsIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
@@ -150,8 +150,8 @@ impl<'a> BlockElementsIter<'a> {
         }
     }
 
-    /// Performs an internal iteration step. Returns `None` until there is a value for the iterator to
-    /// return. Returns `Some(None)` to end the iteration.
+    /// Performs an internal iteration step. Returns [`None`] until there is a value for the iterator to
+    /// return. Returns [`Some(None)`] to end the iteration.
     #[inline]
     #[allow(clippy::option_option)]
     fn step(&mut self) -> Option<Option<Element<'a>>> {
@@ -212,7 +212,7 @@ impl<'a> Iterator for BlockElementsIter<'a> {
     }
 }
 
-/// An iterator over the groups in a `PrimitiveBlock`.
+/// An iterator over the groups in a [`PrimitiveBlock`].
 #[derive(Clone, Debug)]
 pub struct GroupIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
@@ -245,7 +245,7 @@ impl<'a> Iterator for GroupIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupIter<'a> {}
 
-/// An iterator over the nodes in a `PrimitiveGroup`.
+/// An iterator over the nodes in a [`PrimitiveGroup`].
 #[derive(Clone, Debug)]
 pub struct GroupNodeIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
@@ -281,7 +281,7 @@ impl<'a> Iterator for GroupNodeIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupNodeIter<'a> {}
 
-/// An iterator over the ways in a `PrimitiveGroup`.
+/// An iterator over the ways in a [`PrimitiveGroup`].
 #[derive(Clone, Debug)]
 pub struct GroupWayIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
@@ -317,7 +317,7 @@ impl<'a> Iterator for GroupWayIter<'a> {
 
 impl<'a> ExactSizeIterator for GroupWayIter<'a> {}
 
-/// An iterator over the relations in a `PrimitiveGroup`.
+/// An iterator over the relations in a [`PrimitiveGroup`].
 #[derive(Clone, Debug)]
 pub struct GroupRelationIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
