@@ -36,6 +36,16 @@ pub enum BlobType<'a> {
     Unknown(&'a str),
 }
 
+impl<'a> BlobType<'a> {
+    pub const fn as_str(&self) -> &'a str {
+        match self {
+            Self::OsmHeader => "OSMHeader",
+            Self::OsmData => "OSMData",
+            Self::Unknown(x) => x,
+        }
+    }
+}
+
 //TODO rename variants to fit proto files
 /// The decoded content of a blob (analogous to [`BlobType`]).
 #[derive(Clone, Debug)]
@@ -96,8 +106,8 @@ impl Blob {
     /// Returns the type of a blob without decoding its content.
     pub fn get_type(&self) -> BlobType {
         match self.header.get_field_type() {
-            "OSMHeader" => BlobType::OsmHeader,
-            "OSMData" => BlobType::OsmData,
+            x if x == BlobType::OsmHeader.as_str() => BlobType::OsmHeader,
+            x if x == BlobType::OsmData.as_str() => BlobType::OsmData,
             x => BlobType::Unknown(x),
         }
     }
@@ -492,5 +502,30 @@ where
         parse_message_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
     } else {
         Err(new_blob_error(BlobError::Empty))
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_type() {
+        let pairs = [
+            ("", BlobType::Unknown("")),
+            ("abc", BlobType::Unknown("abc")),
+            ("OSMHeader", BlobType::OsmHeader),
+            ("OSMData", BlobType::OsmData),
+        ];
+
+        for (string, blob_type) in &pairs {
+            let mut ff_header = fileformat::BlobHeader::new();
+            ff_header.set_field_type(string.to_string());
+            let ff_blob = fileformat::Blob::new();
+
+            let blob = Blob::new(ff_header, ff_blob, None);
+            assert!(blob.get_type() == *blob_type);
+        }
     }
 }
