@@ -58,7 +58,6 @@ pub enum ErrorKind {
     StringtableIndexOutOfBounds { index: usize },
     /// An error that occurs when decoding `Blob`s.
     Blob(BlobError),
-
     //TODO add UnexpectedPrimitiveBlock
 }
 

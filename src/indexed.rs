@@ -56,8 +56,10 @@ impl BlobInfo {
     /// Is there at least one node in this blob?
     fn nodes_available(&self) -> ElementsAvailable {
         match self.id_ranges {
-            Some(IdRanges {node_ids: Some(_), ..}) => ElementsAvailable::Yes,
-            Some(IdRanges {node_ids: None, ..}) => ElementsAvailable::No,
+            Some(IdRanges {
+                node_ids: Some(_), ..
+            }) => ElementsAvailable::Yes,
+            Some(IdRanges { node_ids: None, .. }) => ElementsAvailable::No,
             None => ElementsAvailable::Unknown,
         }
     }
@@ -65,8 +67,10 @@ impl BlobInfo {
     /// Is there at least one way in this blob?
     fn ways_available(&self) -> ElementsAvailable {
         match self.id_ranges {
-            Some(IdRanges {way_ids: Some(_), ..}) => ElementsAvailable::Yes,
-            Some(IdRanges {way_ids: None, ..}) => ElementsAvailable::No,
+            Some(IdRanges {
+                way_ids: Some(_), ..
+            }) => ElementsAvailable::Yes,
+            Some(IdRanges { way_ids: None, .. }) => ElementsAvailable::No,
             None => ElementsAvailable::Unknown,
         }
     }
@@ -88,13 +92,16 @@ impl BlobInfo {
         match self.id_ranges.as_ref() {
             None => RangeIncluded::Unknown,
             Some(IdRanges { node_ids: None, .. }) => RangeIncluded::No,
-            Some(IdRanges { node_ids: Some(range), .. }) => {
+            Some(IdRanges {
+                node_ids: Some(range),
+                ..
+            }) => {
                 if range_included(range.clone(), node_ids) {
                     RangeIncluded::Yes(range.clone())
                 } else {
                     RangeIncluded::No
                 }
-            },
+            }
         }
     }
 }
@@ -267,8 +274,13 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
         //   * Filter ways and store their dependencies as node IDs
         for info in &mut self.index {
             //TODO do something useful with header blocks
-            if info.blob_type == SimpleBlobType::Primitive && info.ways_available() != ElementsAvailable::No {
-                let block = self.reader.blob_from_offset(info.offset)?.to_primitiveblock()?;
+            if info.blob_type == SimpleBlobType::Primitive
+                && info.ways_available() != ElementsAvailable::No
+            {
+                let block = self
+                    .reader
+                    .blob_from_offset(info.offset)?
+                    .to_primitiveblock()?;
                 Self::update_element_id_ranges(info, &block);
 
                 for group in block.groups() {
@@ -293,7 +305,10 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
             if let RangeIncluded::Yes(node_id_range) = info.node_range_included(&node_ids) {
                 //TODO Only collect into Vec if range has a reasonable size
                 let node_ids: Vec<i64> = node_ids.range(node_id_range).copied().collect();
-                let block = self.reader.blob_from_offset(info.offset)?.to_primitiveblock()?;
+                let block = self
+                    .reader
+                    .blob_from_offset(info.offset)?
+                    .to_primitiveblock()?;
                 for group in block.groups() {
                     for node in group.nodes() {
                         if node_ids.binary_search(&node.id()).is_ok() {
@@ -354,8 +369,13 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
 
         for info in &mut self.index {
             // Skip header blobs and blobs where there are certainly no nodes available.
-            if info.blob_type == SimpleBlobType::Primitive && info.nodes_available() != ElementsAvailable::No {
-                let block = self.reader.blob_from_offset(info.offset)?.to_primitiveblock()?;
+            if info.blob_type == SimpleBlobType::Primitive
+                && info.nodes_available() != ElementsAvailable::No
+            {
+                let block = self
+                    .reader
+                    .blob_from_offset(info.offset)?
+                    .to_primitiveblock()?;
                 Self::update_element_id_ranges(info, &block);
 
                 for group in block.groups() {

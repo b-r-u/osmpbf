@@ -354,12 +354,10 @@ impl<R: Read + Seek + Send> BlobReader<R> {
     pub fn blob_from_offset(&mut self, pos: ByteOffset) -> Result<Blob> {
         self.seek(pos)?;
         self.next().unwrap_or_else(|| {
-            Err(new_error(ErrorKind::Io(
-                ::std::io::Error::new(
-                    ::std::io::ErrorKind::UnexpectedEof,
-                    "no blob at this stream position",
-                )
-            )))
+            Err(new_error(ErrorKind::Io(::std::io::Error::new(
+                ::std::io::ErrorKind::UnexpectedEof,
+                "no blob at this stream position",
+            ))))
         })
     }
 
@@ -504,7 +502,6 @@ where
         Err(new_blob_error(BlobError::Empty))
     }
 }
-
 
 #[cfg(test)]
 mod tests {

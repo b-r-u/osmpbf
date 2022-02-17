@@ -127,10 +127,9 @@ impl<R: Read + Send> ElementReader<R> {
             .par_bridge()
             .map(|blob| match blob?.decode() {
                 Ok(BlobDecode::OsmHeader(_)) | Ok(BlobDecode::Unknown(_)) => Ok(identity()),
-                Ok(BlobDecode::OsmData(block)) => Ok(block
-                    .elements()
-                    .map(&map_op)
-                    .fold(identity(), &reduce_op)),
+                Ok(BlobDecode::OsmData(block)) => {
+                    Ok(block.elements().map(&map_op).fold(identity(), &reduce_op))
+                }
                 Err(e) => Err(e),
             })
             .reduce(
