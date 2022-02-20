@@ -285,12 +285,14 @@ impl<'a> Iterator for DenseNodeInfoIter<'a> {
             self.duser_sids.next(),
             self.visible.next(),
         ) {
-            (Some(&version),
-             Some(dtimestamp),
-             Some(dchangeset),
-             Some(duid),
-             Some(duser_sid),
-             visible_opt) => {
+            (
+                Some(&version),
+                Some(dtimestamp),
+                Some(dchangeset),
+                Some(duid),
+                Some(duser_sid),
+                visible_opt,
+            ) => {
                 self.ctimestamp += *dtimestamp;
                 self.cchangeset += *dchangeset;
                 self.cuid += *duid;
