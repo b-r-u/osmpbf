@@ -19,9 +19,9 @@ fn approx_eq(a: f64, b: f64) -> bool {
 // Compare the content of a HeaderBlock with known values from the test file.
 fn check_header_block_content(block: &HeaderBlock) {
     for feature in block.required_features() {
-        if feature != "OsmSchema-V0.6" &&
-           feature != "DenseNodes" &&
-           feature != "HistoricalInformation"
+        if feature != "OsmSchema-V0.6"
+            && feature != "DenseNodes"
+            && feature != "HistoricalInformation"
         {
             panic!("unknown required feature: {}", feature);
         }
@@ -258,7 +258,10 @@ fn read_history_file() {
     check_header_block_content(&header);
 
     let primitive_block = blobs[1].to_primitiveblock().unwrap();
-    let nodes: Vec<_> = primitive_block.groups().flat_map(|g| g.dense_nodes()).collect();
+    let nodes: Vec<_> = primitive_block
+        .groups()
+        .flat_map(|g| g.dense_nodes())
+        .collect();
 
     assert_eq!(nodes.len(), 2);
 
