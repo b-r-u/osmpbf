@@ -196,7 +196,7 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
         let way_refs: Vec<_> = ways[0].refs().collect();
         assert_eq!(way_refs, [105, 106, 108, 105]);
 
-        let nodes: Vec<_> = ways[0].nodes().collect();
+        let nodes: Vec<_> = ways[0].node_locations().collect();
         assert_eq!(nodes.len(), 0);
     }
 
@@ -381,7 +381,7 @@ fn read_loc_on_ways_file() {
         assert!(tags.contains(&("name", "triangle")));
         let refs: Vec<_> = way.refs().collect();
         assert_eq!(refs, [105, 106, 108, 105]);
-        let nodes: Vec<_> = way.nodes().collect();
+        let nodes: Vec<_> = way.node_locations().collect();
         assert_eq!(nodes.len(), 4);
         // node 0 lat
         assert_approx_eq!(nodes[0].lat(), 52.1224031);

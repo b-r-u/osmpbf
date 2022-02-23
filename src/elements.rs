@@ -188,6 +188,9 @@ impl<'a> Way<'a> {
 
     /// Returns an iterator over the references of this way. Each reference should correspond to a
     /// node id.
+    ///
+    /// Finding the corresponding node might involve iterating over the whole PBF structure, but
+    /// (to save space) ways themselves usually do not contain geo coordinates.
     pub fn refs(&self) -> WayRefIter<'a> {
         WayRefIter {
             deltas: self.osmway.get_refs().iter(),
@@ -195,11 +198,15 @@ impl<'a> Way<'a> {
         }
     }
 
-    /// Returns an iterator over the way's nodes. Each node is a pair of lat,lng.
-    /// Only available on osm.pbf files with the optional LocationsOnWays feature.
-    pub fn nodes(&self) -> WayNodesIter<'a> {
-        // TODO: change to Option, return None if the file does not support LocationsOnWays feature
-        WayNodesIter {
+    /// Returns an iterator over the way's node locations (latitude, longitude).
+    /// Only available if the optional `LocationsOnWays` feature is included in the
+    /// [`HeaderBlock`](crate::block::HeaderBlock) and should return an empty iterator otherwise
+    /// (See the [`optional_features`](crate::block::HeaderBlock::optional_features) method).
+    ///
+    /// Use [`refs`](Way::refs) if this feature is not present or to get information other than
+    /// coordinates about the nodes that constitute a way.
+    pub fn node_locations(&self) -> WayNodeLocationsIter<'a> {
+        WayNodeLocationsIter {
             block: self.block,
             dlats: self.osmway.get_lat().iter(),
             dlons: self.osmway.get_lon().iter(),
@@ -342,12 +349,13 @@ impl<'a> Iterator for WayRefIter<'a> {
 
 impl<'a> ExactSizeIterator for WayRefIter<'a> {}
 
-pub struct WayNode {
+pub struct WayNodeLocation {
     lat: i64,
     lon: i64,
 }
 
-impl WayNode {
+/// A node location that contains latitude and longitude coordinates.
+impl WayNodeLocation {
     /// Returns the latitude coordinate in degrees.
     pub fn lat(&self) -> f64 {
         1e-9 * self.nano_lat() as f64
@@ -379,9 +387,10 @@ impl WayNode {
     }
 }
 
-/// An iterator over the lat,lng of a way.
+/// An iterator over the node locations of a way.
+/// Each element is a pair of coordinates consisting of latitude and longitude.
 #[derive(Clone, Debug)]
-pub struct WayNodesIter<'a> {
+pub struct WayNodeLocationsIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
     dlats: std::slice::Iter<'a, i64>,
     dlons: std::slice::Iter<'a, i64>,
@@ -389,15 +398,15 @@ pub struct WayNodesIter<'a> {
     clon: i64,
 }
 
-impl<'a> Iterator for WayNodesIter<'a> {
-    type Item = WayNode;
+impl<'a> Iterator for WayNodeLocationsIter<'a> {
+    type Item = WayNodeLocation;
 
     fn next(&mut self) -> Option<Self::Item> {
         match (self.dlats.next(), self.dlons.next()) {
             (Some(&dlat), Some(&dlon)) => {
                 self.clat += dlat;
                 self.clon += dlon;
-                Some(WayNode {
+                Some(WayNodeLocation {
                     lat: self.block.get_lat_offset()
                         + i64::from(self.block.get_granularity()) * self.clat,
                     lon: self.block.get_lon_offset()
@@ -413,7 +422,7 @@ impl<'a> Iterator for WayNodesIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for WayNodesIter<'a> {}
+impl<'a> ExactSizeIterator for WayNodeLocationsIter<'a> {}
 
 /// The element type of a relation member.
 #[derive(Clone, Debug, Eq, PartialEq)]
