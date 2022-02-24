@@ -27,7 +27,7 @@ impl<'a> DenseNode<'a> {
         self.id
     }
 
-    /// return optional metadata about the ndode
+    /// return optional metadata about the node
     pub fn info(&'a self) -> Option<&'a DenseNodeInfo<'a>> {
         self.info.as_ref()
     }

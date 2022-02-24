@@ -198,14 +198,14 @@ impl<R: Read + Send> BlobReader<R> {
             }
             Err(e) => {
                 self.offset = None;
-                match e.kind() {
+                return match e.kind() {
                     ::std::io::ErrorKind::UnexpectedEof => {
                         //TODO This also accepts corrupted files in the case of 1-3 available bytes
-                        return None;
+                        None
                     }
                     _ => {
                         self.last_blob_ok = false;
-                        return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
+                        Some(Err(new_blob_error(BlobError::InvalidHeaderSize)))
                     }
                 }
             }
@@ -500,7 +500,7 @@ mod tests {
             let ff_blob = fileformat::Blob::new();
 
             let blob = Blob::new(ff_header, ff_blob, None);
-            assert!(blob.get_type() == *blob_type);
+            assert_eq!(blob.get_type(), *blob_type);
         }
     }
 }
