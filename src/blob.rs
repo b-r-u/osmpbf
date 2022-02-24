@@ -460,7 +460,6 @@ impl BlobReader<BufReader<File>> {
     }
 }
 
-#[cfg(feature = "system-libz")]
 pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
 where
     T: protobuf::Message,
@@ -474,27 +473,9 @@ where
             Err(new_blob_error(BlobError::MessageTooBig { size }))
         }
     } else if blob.has_zlib_data() {
+        #[cfg(feature = "system-libz")]
         let mut decoder = ZlibDecoder::new(blob.get_zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
-        parse_message_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
-    } else {
-        Err(new_blob_error(BlobError::Empty))
-    }
-}
-
-#[cfg(not(feature = "system-libz"))]
-pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
-where
-    T: protobuf::Message,
-{
-    if blob.has_raw() {
-        let size = blob.get_raw().len() as u64;
-        if size < MAX_BLOB_MESSAGE_SIZE {
-            parse_message_from_bytes(blob.get_raw())
-                .map_err(|e| new_protobuf_error(e, "raw blob data"))
-        } else {
-            Err(new_blob_error(BlobError::MessageTooBig { size }))
-        }
-    } else if blob.has_zlib_data() {
+        #[cfg(not(feature = "system-libz"))]
         let mut decoder =
             DeflateDecoder::from_zlib(blob.get_zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
         parse_message_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))

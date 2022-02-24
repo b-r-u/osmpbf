@@ -364,3 +364,23 @@ pub(crate) fn str_from_stringtable(
         Err(new_error(ErrorKind::StringtableIndexOutOfBounds { index }))
     }
 }
+
+/// Construct a key-value tuple from key/value indexes, using the string table from a block.
+pub(crate) fn get_key_value(
+    key_index: Option<usize>,
+    value_index: Option<usize>,
+    block: &osmformat::PrimitiveBlock,
+) -> Option<(&str, &str)> {
+    match (key_index, value_index) {
+        (Some(key_index), Some(val_index)) => {
+            let k_res = str_from_stringtable(block, key_index);
+            let v_res = str_from_stringtable(block, val_index);
+            if let (Ok(k), Ok(v)) = (k_res, v_res) {
+                Some((k, v))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
