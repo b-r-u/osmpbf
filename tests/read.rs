@@ -1,6 +1,3 @@
-extern crate assert_approx_eq;
-extern crate osmpbf;
-
 use assert_approx_eq::assert_approx_eq;
 use osmpbf::*;
 

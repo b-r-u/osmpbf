@@ -1,9 +1,5 @@
 //! Iterate over blobs from a memory map
 
-extern crate byteorder;
-extern crate memmap;
-extern crate protobuf;
-
 use self::fileformat::BlobHeader;
 use crate::blob::{decode_blob, BlobDecode, BlobType, ByteOffset};
 use crate::block::{HeaderBlock, PrimitiveBlock};

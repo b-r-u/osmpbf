@@ -11,7 +11,7 @@ A reader for the OpenStreetMap PBF file format (*.osm.pbf).
 categories = ["parser-implementations", "encoding", "science"]
 keywords = ["openstreetmap", "osm", "pbf", "protocolbuffer", "protobuf"]
 license = "MIT/Apache-2.0"
-edition = "2021"
+edition = "2018"
 
 [features]
 default = ["system-libz"]

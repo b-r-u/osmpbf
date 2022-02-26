@@ -1,8 +1,5 @@
 //! Read and decode blobs
 
-extern crate byteorder;
-extern crate protobuf;
-
 use crate::block::{HeaderBlock, PrimitiveBlock};
 use crate::error::{new_blob_error, new_error, new_protobuf_error, BlobError, ErrorKind, Result};
 use crate::proto::fileformat;
