@@ -3,14 +3,14 @@
 extern crate byteorder;
 extern crate protobuf;
 
-use block::{HeaderBlock, PrimitiveBlock};
+use crate::block::{HeaderBlock, PrimitiveBlock};
+use crate::error::{new_blob_error, new_error, new_protobuf_error, BlobError, ErrorKind, Result};
+use crate::proto::fileformat;
+use crate::util::{parse_message_from_bytes, parse_message_from_reader};
 use byteorder::ReadBytesExt;
-use error::{new_blob_error, new_error, new_protobuf_error, BlobError, ErrorKind, Result};
-use proto::fileformat;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
-use util::{parse_message_from_bytes, parse_message_from_reader};
 
 #[cfg(feature = "system-libz")]
 use flate2::read::ZlibDecoder;

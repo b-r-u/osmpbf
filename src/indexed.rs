@@ -1,12 +1,12 @@
 //! Speed up searches by using an index
 
-use error::Result;
+use crate::error::Result;
+use crate::{BlobReader, BlobType, ByteOffset, Element, PrimitiveBlock, Way};
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{Read, Seek};
 use std::ops::RangeInclusive;
 use std::path::Path;
-use {BlobReader, BlobType, ByteOffset, Element, PrimitiveBlock, Way};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SimpleBlobType {
