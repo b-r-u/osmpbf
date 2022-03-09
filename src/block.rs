@@ -365,11 +365,11 @@ pub(crate) fn str_from_stringtable(
     }
 }
 
-/// Construct a key-value tuple from key/value indexes, using the string table from a block.
-pub(crate) fn get_key_value(
+/// Construct a key-value tuple from key/value indexes, using the stringtable from a block.
+pub(crate) fn get_stringtable_key_value(
+    block: &osmformat::PrimitiveBlock,
     key_index: Option<usize>,
     value_index: Option<usize>,
-    block: &osmformat::PrimitiveBlock,
 ) -> Option<(&str, &str)> {
     match (key_index, value_index) {
         (Some(key_index), Some(val_index)) => {

@@ -1,6 +1,6 @@
 //! Nodes, ways and relations
 
-use block::{get_key_value, str_from_stringtable};
+use block::{get_stringtable_key_value, str_from_stringtable};
 use dense::DenseNode;
 use error::Result;
 use proto::osmformat;
@@ -525,10 +525,10 @@ impl<'a> Iterator for TagIter<'a> {
     type Item = (&'a str, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
-        get_key_value(
+        get_stringtable_key_value(
+            self.block,
             self.key_indices.next().map(|v| *v as usize),
             self.val_indices.next().map(|v| *v as usize),
-            self.block,
         )
     }
 
