@@ -19,12 +19,6 @@ Add this to your `Cargo.toml`:
 osmpbf = "0.2"
 ```
 
-and if you're using Rust 2015, add this line to the crate root:
-
-```rust
-extern crate osmpbf;
-```
-
 Here's a simple example that counts all the ways in a file:
 
 ```rust

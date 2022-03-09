@@ -1,10 +1,10 @@
 //! Nodes, ways and relations
 
-use block::{get_stringtable_key_value, str_from_stringtable};
-use dense::DenseNode;
-use error::Result;
-use proto::osmformat;
-use proto::osmformat::PrimitiveBlock;
+use crate::block::{get_stringtable_key_value, str_from_stringtable};
+use crate::dense::DenseNode;
+use crate::error::Result;
+use crate::proto::osmformat;
+use crate::proto::osmformat::PrimitiveBlock;
 
 /// An enum with the OSM core elements: nodes, ways and relations.
 #[derive(Clone, Debug)]

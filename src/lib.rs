@@ -13,7 +13,6 @@ osmpbf = "0.2"
 and if you're using Rust 2015, add this line to the crate root:
 
 ```rust
-extern crate osmpbf;
 ```
 
 ## Example: Count ways
@@ -68,17 +67,6 @@ println!("Number of ways: {}", ways);
 */
 
 #![recursion_limit = "1024"]
-
-extern crate byteorder;
-extern crate memmap;
-extern crate protobuf;
-extern crate rayon;
-
-#[cfg(feature = "system-libz")]
-extern crate flate2;
-
-#[cfg(not(feature = "system-libz"))]
-extern crate inflate;
 
 pub use blob::*;
 pub use block::*;

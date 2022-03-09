@@ -1,8 +1,6 @@
 // Count the number of buildings and their nodes from a PBF file
 // given as the first command line argument.
 
-extern crate osmpbf;
-
 use osmpbf::{Element, IndexedReader};
 use std::error::Error;
 

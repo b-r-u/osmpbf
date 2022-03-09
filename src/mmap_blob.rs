@@ -1,18 +1,15 @@
 //! Iterate over blobs from a memory map
 
-extern crate byteorder;
-extern crate memmap;
-extern crate protobuf;
-
 use self::fileformat::BlobHeader;
-use blob::{decode_blob, BlobDecode, BlobType, ByteOffset};
-use block::{HeaderBlock, PrimitiveBlock};
+use crate::blob::{decode_blob, BlobDecode, BlobType, ByteOffset};
+use crate::block::{HeaderBlock, PrimitiveBlock};
+use crate::error::{new_blob_error, new_protobuf_error, BlobError, Result};
+use crate::proto::{fileformat, osmformat};
+use crate::util::parse_message_from_bytes;
+use crate::MAX_BLOB_HEADER_SIZE;
 use byteorder::ByteOrder;
-use error::{new_blob_error, new_protobuf_error, BlobError, Result};
-use proto::{fileformat, osmformat};
 use std::fs::File;
 use std::path::Path;
-use util::parse_message_from_bytes;
 
 /// A read-only memory map.
 #[derive(Debug)]
@@ -198,7 +195,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
 
         let header_size = byteorder::BigEndian::read_u32(slice) as usize;
 
-        if header_size as u64 >= ::blob::MAX_BLOB_HEADER_SIZE {
+        if header_size as u64 >= MAX_BLOB_HEADER_SIZE {
             self.last_blob_ok = false;
             return Some(Err(new_blob_error(BlobError::HeaderTooBig {
                 size: header_size as u64,

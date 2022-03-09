@@ -1,8 +1,6 @@
 // Count the number of nodes, ways and relations in a PBF file given as the
 // first command line argument.
 
-extern crate osmpbf;
-
 use osmpbf::*;
 
 fn main() {
