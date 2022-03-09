@@ -1,6 +1,6 @@
 //! Iterate over the dense nodes in a `PrimitiveGroup`
 
-use block::str_from_stringtable;
+use block::{get_stringtable_key_value, str_from_stringtable};
 use error::Result;
 use proto::osmformat;
 use std;
@@ -324,18 +324,11 @@ impl<'a> Iterator for DenseTagIter<'a> {
     type Item = (&'a str, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (self.keys_vals_indices.next(), self.keys_vals_indices.next()) {
-            (Some(&key_index), Some(&val_index)) => {
-                let k_res = str_from_stringtable(self.block, key_index as usize);
-                let v_res = str_from_stringtable(self.block, val_index as usize);
-                if let (Ok(k), Ok(v)) = (k_res, v_res) {
-                    Some((k, v))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+        get_stringtable_key_value(
+            self.block,
+            self.keys_vals_indices.next().map(|v| *v as usize),
+            self.keys_vals_indices.next().map(|v| *v as usize),
+        )
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
