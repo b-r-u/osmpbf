@@ -10,11 +10,6 @@ Add this to your `Cargo.toml`:
 osmpbf = "0.2"
 ```
 
-and if you're using Rust 2015, add this line to the crate root:
-
-```rust
-```
-
 ## Example: Count ways
 
 Here's a simple example that counts all the OpenStreetMap way elements in a
