@@ -1,8 +1,8 @@
 //! High level reader interface
 
-use blob::{BlobDecode, BlobReader};
-use elements::Element;
-use error::Result;
+use crate::blob::{BlobDecode, BlobReader};
+use crate::elements::Element;
+use crate::error::Result;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{BufReader, Read};

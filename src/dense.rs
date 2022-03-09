@@ -1,8 +1,8 @@
 //! Iterate over the dense nodes in a `PrimitiveGroup`
 
-use block::{get_stringtable_key_value, str_from_stringtable};
-use error::Result;
-use proto::osmformat;
+use crate::block::{get_stringtable_key_value, str_from_stringtable};
+use crate::error::Result;
+use crate::proto::osmformat;
 use std;
 
 //TODO Add getter functions for id, version, uid, ...
