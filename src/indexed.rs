@@ -423,20 +423,20 @@ mod tests {
         let mut set = BTreeSet::<i64>::new();
         set.extend(&[1, 2, 6]);
 
-        assert_eq!(range_included(RangeInclusive::new(0, 0), &set), false);
-        assert_eq!(range_included(RangeInclusive::new(1, 1), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(2, 2), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(3, 3), &set), false);
-        assert_eq!(range_included(RangeInclusive::new(3, 5), &set), false);
-        assert_eq!(range_included(RangeInclusive::new(3, 6), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(6, 6), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(7, 7), &set), false);
-        assert_eq!(range_included(RangeInclusive::new(0, 1), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(6, 7), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(2, 3), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(5, 6), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(5, 8), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(0, 8), &set), true);
-        assert_eq!(range_included(RangeInclusive::new(0, 4), &set), true);
+        assert!(!range_included(RangeInclusive::new(0, 0), &set));
+        assert!(range_included(RangeInclusive::new(1, 1), &set));
+        assert!(range_included(RangeInclusive::new(2, 2), &set));
+        assert!(!range_included(RangeInclusive::new(3, 3), &set));
+        assert!(!range_included(RangeInclusive::new(3, 5), &set));
+        assert!(range_included(RangeInclusive::new(3, 6), &set));
+        assert!(range_included(RangeInclusive::new(6, 6), &set));
+        assert!(!range_included(RangeInclusive::new(7, 7), &set));
+        assert!(range_included(RangeInclusive::new(0, 1), &set));
+        assert!(range_included(RangeInclusive::new(6, 7), &set));
+        assert!(range_included(RangeInclusive::new(2, 3), &set));
+        assert!(range_included(RangeInclusive::new(5, 6), &set));
+        assert!(range_included(RangeInclusive::new(5, 8), &set));
+        assert!(range_included(RangeInclusive::new(0, 8), &set));
+        assert!(range_included(RangeInclusive::new(0, 4), &set));
     }
 }

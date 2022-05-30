@@ -194,9 +194,9 @@ message Node {
   required sint64 lon = 9;
 }
 
-/* Used to densly represent a sequence of nodes that do not have any tags.
+/* Used to densely represent a sequence of nodes that do not have any tags.
 
-We represent these nodes columnwise as five columns: ID's, lats, and
+We represent these nodes column-wise as five columns: ID's, lats, and
 lons, all delta coded. When metadata is not omitted,
 
 We encode keys & vals for all nodes as a single array of integers
