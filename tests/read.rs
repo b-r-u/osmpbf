@@ -78,15 +78,11 @@ fn approx_eq(a: f64, b: f64) -> bool {
 
 /// Ensure two vectors have the same values, ignoring their order
 fn is_same_unordered(a: &[&str], b: &[String]) -> bool {
-    if a.len() == b.len() {
-        let mut a = a.to_vec();
-        let mut b = b.to_vec();
-        a.sort_unstable();
-        b.sort_unstable();
-        a.iter().zip(b.iter()).filter(|&(a, b)| a == b).count() == a.len()
-    } else {
-        false
-    }
+    let mut a = a.to_vec();
+    let mut b = b.to_vec();
+    a.sort_unstable();
+    b.sort_unstable();
+    a == b
 }
 
 // Compare the content of a HeaderBlock with known values from the test file.
