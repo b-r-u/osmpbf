@@ -47,7 +47,6 @@ impl<W: Write + Send> BlobWriter<W> {
         );
         let header_size = header.compute_size();
 
-        //TODO >= or = ?
         if u64::from(header_size) >= MAX_BLOB_HEADER_SIZE {
             return Err(new_blob_error(BlobError::HeaderTooBig {
                 size: u64::from(header_size),
@@ -70,7 +69,6 @@ impl<W: Write + Send> BlobWriter<W> {
 
     /// Create Blob from raw (uncompressed) encoded block data
     fn encode_block_data(block_data: Vec<u8>, encoding: BlobEncoding) -> Result<fileformat::Blob> {
-        //TODO >= or = ?
         if block_data.len() as u64 >= MAX_BLOB_MESSAGE_SIZE {
             return Err(new_blob_error(BlobError::MessageTooBig {
                 size: block_data.len() as u64,

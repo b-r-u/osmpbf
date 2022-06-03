@@ -15,10 +15,16 @@ use flate2::read::ZlibDecoder;
 #[cfg(not(feature = "system-libz"))]
 use inflate::DeflateDecoder;
 
-/// Maximum allowed [`BlobHeader`] size in bytes.
+/// Maximum [`BlobHeader`] size in bytes.
+///
+/// From the Wiki (<https://wiki.openstreetmap.org/wiki/PBF_Format>):
+/// The length of the BlobHeader should be less than 32 KiB (32*1024 bytes) and must be less than 64 KiB.
 pub static MAX_BLOB_HEADER_SIZE: u64 = 64 * 1024;
 
-/// Maximum allowed uncompressed [`Blob`] content size in bytes.
+/// Maximum uncompressed [`Blob`] content size in bytes.
+///
+/// From the Wiki (<https://wiki.openstreetmap.org/wiki/PBF_Format>):
+/// The uncompressed length of a Blob should be less than 16 MiB (16*1024*1024 bytes) and must be less than 32 MiB.
 pub static MAX_BLOB_MESSAGE_SIZE: u64 = 32 * 1024 * 1024;
 
 /// The content type of a blob.
