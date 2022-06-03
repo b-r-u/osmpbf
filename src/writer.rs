@@ -6,7 +6,7 @@ use protobuf::Message;
 #[cfg(feature = "system-libz")]
 use flate2::{write::ZlibEncoder, Compression};
 
-use crate::blob::{BlobType, MAX_BLOB_HEADER_SIZE, MAX_BLOB_MESSAGE_SIZE};
+use crate::blob::{Blob, BlobType, MAX_BLOB_HEADER_SIZE, MAX_BLOB_MESSAGE_SIZE};
 use crate::block::{HeaderBlock, PrimitiveBlock};
 use crate::error::{new_blob_error, new_protobuf_error, BlobError, Result};
 use crate::proto::fileformat;
@@ -64,19 +64,12 @@ impl<W: Write + Send> BlobWriter<W> {
         Ok(())
     }
 
-    pub fn write_blob(&mut self, btype: BlobType, blob: fileformat::Blob) -> Result<()> {
-        let mut header = fileformat::BlobHeader::new();
-        header.set_datasize(blob.compute_size() as i32);
-        header.set_field_type(btype.as_str().to_string());
-        //TODO optionally set indexdata
-        self.write_blob_raw(header, blob)
+    pub fn write_blob(&mut self, blob: Blob) -> Result<()> {
+        self.write_blob_raw(blob.header, blob.blob)
     }
 
     /// Create Blob from raw (uncompressed) encoded block data
-    pub fn encode_block_data(
-        block_data: Vec<u8>,
-        encoding: BlobEncoding,
-    ) -> Result<fileformat::Blob> {
+    fn encode_block_data(block_data: Vec<u8>, encoding: BlobEncoding) -> Result<fileformat::Blob> {
         //TODO >= or = ?
         if block_data.len() as u64 >= MAX_BLOB_MESSAGE_SIZE {
             return Err(new_blob_error(BlobError::MessageTooBig {
@@ -91,7 +84,7 @@ impl<W: Write + Send> BlobWriter<W> {
             BlobEncoding::Raw => {
                 blob.set_raw(block_data);
             }
-            BlobEncoding::Zlib{level} => {
+            BlobEncoding::Zlib { level } => {
                 if cfg!(feature = "system-libz") {
                     assert!(level < 10);
                     let mut encoder = ZlibEncoder::new(vec![], Compression::new(level));
@@ -106,27 +99,60 @@ impl<W: Write + Send> BlobWriter<W> {
         Ok(blob)
     }
 
-    pub fn write_header_block(&mut self, block: HeaderBlock) {
-        /*
-        let mut header = fileformat::BlobHeader::new();
+    fn write_block_message<M>(
+        &mut self,
+        block: M,
+        blob_type: BlobType,
+        error_string: &'static str,
+    ) -> Result<()>
+    where
+        M: protobuf::Message,
+    {
         let mut block_data = vec![];
-        block.header.write_to_writer(&mut block_data);
+        block
+            .write_to_writer(&mut block_data)
+            .map_err(|e| new_protobuf_error(e, error_string))?;
+        let blob = Self::encode_block_data(block_data, BlobEncoding::Zlib { level: 6 })?;
 
-        //header.set_datasize(blob.compute_size() as i32);
-        //header.set_field_type(btype.as_str().to_string());
-        */
+        let mut header = fileformat::BlobHeader::new();
+        header.set_datasize(blob.compute_size() as i32);
+        header.set_field_type(blob_type.as_str().to_string());
+        //TODO optionally set indexdata
+
+        self.write_blob_raw(header, blob)
+    }
+
+    pub fn write_header_block(&mut self, block: HeaderBlock) -> Result<()> {
+        self.write_block_message(block.header, BlobType::OsmHeader, "writing header block")
+    }
+
+    pub fn write_primitive_block(&mut self, block: PrimitiveBlock) -> Result<()> {
+        self.write_block_message(block.block, BlobType::OsmData, "writing primitive block")
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proto::osmformat;
 
     #[test]
     fn test_writer() {
         let buf = vec![];
         let mut w = BlobWriter::new(buf);
-        let blob = fileformat::Blob::new();
-        w.write_blob(BlobType::OsmHeader, blob).unwrap();
+
+        {
+            let block = HeaderBlock::new(osmformat::HeaderBlock::new());
+            w.write_header_block(block).unwrap();
+        }
+
+        {
+            let mut block = osmformat::PrimitiveBlock::new();
+            block.set_stringtable(osmformat::StringTable::new());
+            block.set_primitivegroup(Vec::new().into());
+            let block = PrimitiveBlock::new(block);
+
+            w.write_primitive_block(block).unwrap();
+        }
     }
 }

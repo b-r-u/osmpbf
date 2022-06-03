@@ -66,8 +66,8 @@ pub struct ByteOffset(pub u64);
 /// to different types of blocks that are usually more interesting to the user.
 #[derive(Clone, Debug)]
 pub struct Blob {
-    header: fileformat::BlobHeader,
-    blob: fileformat::Blob,
+    pub(crate) header: fileformat::BlobHeader,
+    pub(crate) blob: fileformat::Blob,
     offset: Option<ByteOffset>,
 }
 
@@ -207,7 +207,7 @@ impl<R: Read + Send> BlobReader<R> {
                         self.last_blob_ok = false;
                         Some(Err(new_blob_error(BlobError::InvalidHeaderSize)))
                     }
-                }
+                };
             }
         };
 

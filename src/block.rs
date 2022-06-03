@@ -9,7 +9,7 @@ use std;
 /// A `HeaderBlock`. It contains metadata about following [`PrimitiveBlock`]s.
 #[derive(Clone, Debug)]
 pub struct HeaderBlock {
-    header: osmformat::HeaderBlock,
+    pub(crate) header: osmformat::HeaderBlock,
 }
 
 impl HeaderBlock {
@@ -32,7 +32,7 @@ impl HeaderBlock {
 /// A `PrimitiveBlock`. It contains a sequence of groups.
 #[derive(Clone, Debug)]
 pub struct PrimitiveBlock {
-    block: osmformat::PrimitiveBlock,
+    pub(crate) block: osmformat::PrimitiveBlock,
 }
 
 impl PrimitiveBlock {
