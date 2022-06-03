@@ -101,6 +101,7 @@ impl<W: Write + Send> BlobWriter<W> {
         &mut self,
         block: M,
         blob_type: BlobType,
+        encoding: BlobEncoding,
         error_string: &'static str,
     ) -> Result<()>
     where
@@ -110,7 +111,7 @@ impl<W: Write + Send> BlobWriter<W> {
         block
             .write_to_writer(&mut block_data)
             .map_err(|e| new_protobuf_error(e, error_string))?;
-        let blob = Self::encode_block_data(block_data, BlobEncoding::Zlib { level: 6 })?;
+        let blob = Self::encode_block_data(block_data, encoding)?;
 
         let mut header = fileformat::BlobHeader::new();
         header.set_datasize(blob.compute_size() as i32);
@@ -120,12 +121,26 @@ impl<W: Write + Send> BlobWriter<W> {
         self.write_blob_raw(header, blob)
     }
 
-    pub fn write_header_block(&mut self, block: HeaderBlock) -> Result<()> {
-        self.write_block_message(block.header, BlobType::OsmHeader, "writing header block")
+    pub fn write_header_block(&mut self, block: HeaderBlock, encoding: BlobEncoding) -> Result<()> {
+        self.write_block_message(
+            block.header,
+            BlobType::OsmHeader,
+            encoding,
+            "writing header block",
+        )
     }
 
-    pub fn write_primitive_block(&mut self, block: PrimitiveBlock) -> Result<()> {
-        self.write_block_message(block.block, BlobType::OsmData, "writing primitive block")
+    pub fn write_primitive_block(
+        &mut self,
+        block: PrimitiveBlock,
+        encoding: BlobEncoding,
+    ) -> Result<()> {
+        self.write_block_message(
+            block.block,
+            BlobType::OsmData,
+            encoding,
+            "writing primitive block",
+        )
     }
 }
 
@@ -141,7 +156,8 @@ mod tests {
 
         {
             let block = HeaderBlock::new(osmformat::HeaderBlock::new());
-            w.write_header_block(block).unwrap();
+            w.write_header_block(block, BlobEncoding::Zlib { level: 6 })
+                .unwrap();
         }
 
         {
@@ -150,7 +166,8 @@ mod tests {
             block.set_primitivegroup(Vec::new().into());
             let block = PrimitiveBlock::new(block);
 
-            w.write_primitive_block(block).unwrap();
+            w.write_primitive_block(block, BlobEncoding::Zlib { level: 6 })
+                .unwrap();
         }
     }
 }
