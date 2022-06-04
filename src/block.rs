@@ -45,7 +45,7 @@ impl PrimitiveBlock {
         BlockElementsIter::new(&self.block)
     }
 
-    /// Returns an iterator over the groups in this `PrimitiveBlock`.
+    /// Returns an iterator over the groups ([`PrimitiveGroup`]) in this `PrimitiveBlock`.
     pub fn groups(&self) -> GroupIter {
         GroupIter::new(&self.block)
     }
@@ -81,6 +81,9 @@ impl PrimitiveBlock {
 }
 
 /// A `PrimitiveGroup` contains a sequence of elements of one type.
+///
+/// A group must never contain different types of objects, so only one type of iterator should be
+/// non-empty.
 #[derive(Clone, Debug)]
 pub struct PrimitiveGroup<'a> {
     block: &'a osmformat::PrimitiveBlock,
@@ -114,6 +117,8 @@ impl<'a> PrimitiveGroup<'a> {
     pub fn relations(&self) -> GroupRelationIter<'a> {
         GroupRelationIter::new(self.block, self.group)
     }
+
+    //TODO implement changesets
 }
 
 /// An iterator over the elements in a [`PrimitiveGroup`].
@@ -212,7 +217,7 @@ impl<'a> Iterator for BlockElementsIter<'a> {
     }
 }
 
-/// An iterator over the groups in a [`PrimitiveBlock`].
+/// An iterator over the groups ([`PrimitiveGroup`]) in a [`PrimitiveBlock`].
 #[derive(Clone, Debug)]
 pub struct GroupIter<'a> {
     block: &'a osmformat::PrimitiveBlock,

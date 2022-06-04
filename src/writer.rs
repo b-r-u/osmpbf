@@ -1,3 +1,5 @@
+//! Encode and write blobs and blocks
+
 use std::io::Write;
 
 use byteorder::WriteBytesExt;
@@ -142,6 +144,8 @@ impl<W: Write + Send> BlobWriter<W> {
             "writing primitive block",
         )
     }
+
+    //TODO write unknown blob type
 }
 
 #[cfg(test)]
