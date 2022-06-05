@@ -17,6 +17,21 @@ impl HeaderBlock {
         HeaderBlock { header }
     }
 
+    /// Returns the (optional) bounding box of the included features.
+    pub fn bbox(&self) -> Option<HeaderBBox> {
+        if self.header.has_bbox() {
+            let bbox = self.header.get_bbox();
+            Some(HeaderBBox {
+                left: (bbox.get_left() as f64) * 1.0_e-9,
+                right: (bbox.get_right() as f64) * 1.0_e-9,
+                top: (bbox.get_top() as f64) * 1.0_e-9,
+                bottom: (bbox.get_bottom() as f64) * 1.0_e-9,
+            })
+        } else {
+            None
+        }
+    }
+
     /// Returns a list of required features that a parser needs to implement to parse the following
     /// [`PrimitiveBlock`]s.
     pub fn required_features(&self) -> &[String] {
@@ -27,6 +42,29 @@ impl HeaderBlock {
     pub fn optional_features(&self) -> &[String] {
         self.header.get_optional_features()
     }
+
+    /// Returns the name of the program that generated the file or `None` if unset.
+    pub fn writing_program(&self) -> Option<&str> {
+        if self.header.has_writingprogram() {
+            Some(self.header.get_writingprogram())
+        } else {
+            None
+        }
+    }
+}
+
+/// A bounding box that is usually included in a [`HeaderBlock`].
+/// The maximum precision of the coordinates is one nanodegree (10⁻⁹).
+#[derive(Clone, Debug)]
+pub struct HeaderBBox {
+    /// left coordinate in degrees (minimum longitude)
+    pub left: f64,
+    /// right coordinate in degrees (maximum longitude)
+    pub right: f64,
+    /// top coordinate in degrees (minimum latitude)
+    pub top: f64,
+    /// bottom coordinate in degrees (maximum latitude)
+    pub bottom: f64,
 }
 
 /// A `PrimitiveBlock`. It contains a sequence of groups.
