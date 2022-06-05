@@ -71,6 +71,7 @@ pub use error::{BlobError, Error, ErrorKind, Result};
 pub use indexed::*;
 pub use mmap_blob::*;
 pub use reader::*;
+pub use writer::*;
 
 pub mod blob;
 pub mod block;
