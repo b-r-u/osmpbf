@@ -190,10 +190,81 @@ impl<W: Write + Send> BlockBuilder<W> {
         }
     }
 
+    pub fn node_group(&mut self) -> NodeGroupBuilder<W> {
+        NodeGroupBuilder::new(self)
+    }
+
     pub fn finish(mut self, encoding: BlobEncoding) -> Result<BlobWriter<W>> {
         self.blob_writer
             .write_primitive_block(PrimitiveBlock::new(self.block), encoding)?;
         Ok(self.blob_writer)
+    }
+}
+
+pub struct NodeGroupBuilder<'a, W: Write + Send> {
+    pub(crate) block_builder: &'a mut BlockBuilder<W>,
+    pub(crate) group: osmformat::PrimitiveGroup,
+}
+
+impl<'a, W: Write + Send> NodeGroupBuilder<'a, W> {
+    pub(crate) fn new(block_builder: &'a mut BlockBuilder<W>) -> Self {
+        Self {
+            block_builder,
+            group: osmformat::PrimitiveGroup::new(),
+        }
+    }
+
+    pub fn node_builder<'b>(&'b mut self) -> NodeBuilder<'b, 'a, W> {
+        NodeBuilder {
+            node_group_builder: self,
+            node: osmformat::Node::new(),
+        }
+    }
+
+    pub fn finish(self) {
+        self.block_builder
+            .block
+            .mut_primitivegroup()
+            .push(self.group);
+    }
+}
+
+pub struct NodeBuilder<'a, 'b, W: Write + Send> {
+    node_group_builder: &'a mut NodeGroupBuilder<'b, W>,
+    node: osmformat::Node,
+}
+
+impl<'a, 'b, W: Write + Send> NodeBuilder<'a, 'b, W> {
+    pub fn id(mut self, id: i64) -> Self {
+        self.node.set_id(id);
+        self
+    }
+
+    pub fn latlon(mut self, lat: f64, lon: f64) -> Self {
+        self.node.set_lat((lat * 1e-7).round() as i64);
+        self.node.set_lon((lon * 1e-7).round() as i64);
+        self
+    }
+
+    pub fn add_tag<K, V>(mut self, key: K, val: V) -> Self
+    where
+        K: Into<Vec<u8>>,
+        V: Into<Vec<u8>>,
+    {
+        let block = &mut self.node_group_builder.block_builder;
+        self.node
+            .mut_keys()
+            .push(block.add_string_table_entry(key.into()) as u32);
+        self.node
+            .mut_vals()
+            .push(block.add_string_table_entry(val.into()) as u32);
+        self
+    }
+
+    //TODO implement setting Info
+
+    pub fn finish(self) {
+        self.node_group_builder.group.mut_nodes().push(self.node);
     }
 }
 
@@ -233,6 +304,33 @@ mod tests {
         assert_eq!(block_builder.add_string_table_entry("xyz".into()), 2);
         assert_eq!(block_builder.add_string_table_entry("abc".into()), 1);
         assert_eq!(block_builder.add_string_table_entry("123".into()), 3);
+        block_builder.finish(BlobEncoding::Raw).unwrap();
+    }
+
+    #[test]
+    fn test_node_builder() {
+        let mut buf = vec![];
+        let w = BlobWriter::new(&mut buf);
+        let mut block_builder = BlockBuilder::new(w);
+        {
+            let mut group = block_builder.node_group();
+            group
+                .node_builder()
+                .id(12)
+                .latlon(52.4, 13.05)
+                .add_tag("name", "Potsdam")
+                .add_tag("place", "city")
+                .finish();
+            group
+                .node_builder()
+                .id(13)
+                .latlon(52.51, 13.35)
+                .add_tag("name", "Berlin")
+                .add_tag("place", "city")
+                .add_tag("capital", "yes")
+                .finish();
+            group.finish();
+        }
         block_builder.finish(BlobEncoding::Raw).unwrap();
     }
 }
