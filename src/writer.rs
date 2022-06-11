@@ -5,10 +5,8 @@ use std::collections::HashMap;
 use std::io::Write;
 
 use byteorder::WriteBytesExt;
-use protobuf::Message;
-
-#[cfg(feature = "system-libz")]
 use flate2::{write::ZlibEncoder, Compression};
+use protobuf::Message;
 
 use crate::blob::{Blob, BlobType, MAX_BLOB_HEADER_SIZE, MAX_BLOB_MESSAGE_SIZE};
 use crate::block::{HeaderBlock, PrimitiveBlock};
@@ -87,14 +85,10 @@ impl<W: Write + Send> BlobWriter<W> {
                 blob.set_raw(block_data);
             }
             BlobEncoding::Zlib { level } => {
-                if cfg!(feature = "system-libz") {
-                    assert!(level < 10);
-                    let mut encoder = ZlibEncoder::new(vec![], Compression::new(level));
-                    encoder.write_all(&block_data)?;
-                    blob.set_zlib_data(encoder.finish()?);
-                } else {
-                    unimplemented!();
-                }
+                assert!(level < 10);
+                let mut encoder = ZlibEncoder::new(vec![], Compression::new(level));
+                encoder.write_all(&block_data)?;
+                blob.set_zlib_data(encoder.finish()?);
             }
         }
 

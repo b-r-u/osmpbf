@@ -5,15 +5,10 @@ use crate::error::{new_blob_error, new_error, new_protobuf_error, BlobError, Err
 use crate::proto::fileformat;
 use crate::util::{parse_message_from_bytes, parse_message_from_reader};
 use byteorder::ReadBytesExt;
+use flate2::read::ZlibDecoder;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
-
-#[cfg(feature = "system-libz")]
-use flate2::read::ZlibDecoder;
-
-#[cfg(not(feature = "system-libz"))]
-use inflate::DeflateDecoder;
 
 /// Maximum [`BlobHeader`] size in bytes.
 ///
@@ -476,11 +471,7 @@ where
             Err(new_blob_error(BlobError::MessageTooBig { size }))
         }
     } else if blob.has_zlib_data() {
-        #[cfg(feature = "system-libz")]
         let mut decoder = ZlibDecoder::new(blob.get_zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
-        #[cfg(not(feature = "system-libz"))]
-        let mut decoder =
-            DeflateDecoder::from_zlib(blob.get_zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
         parse_message_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
     } else {
         Err(new_blob_error(BlobError::Empty))
