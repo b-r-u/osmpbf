@@ -19,34 +19,32 @@ impl HeaderBlock {
 
     /// Returns the (optional) bounding box of the included features.
     pub fn bbox(&self) -> Option<HeaderBBox> {
-        if self.header.has_bbox() {
-            let bbox = self.header.get_bbox();
-            Some(HeaderBBox {
-                left: (bbox.get_left() as f64) * 1.0_e-9,
-                right: (bbox.get_right() as f64) * 1.0_e-9,
-                top: (bbox.get_top() as f64) * 1.0_e-9,
-                bottom: (bbox.get_bottom() as f64) * 1.0_e-9,
-            })
-        } else {
-            None
+        match self.header.bbox.as_ref() {
+            Some(bbox) => Some(HeaderBBox {
+                left: (bbox.left() as f64) * 1.0_e-9,
+                right: (bbox.right() as f64) * 1.0_e-9,
+                top: (bbox.top() as f64) * 1.0_e-9,
+                bottom: (bbox.bottom() as f64) * 1.0_e-9,
+            }),
+            None => None,
         }
     }
 
     /// Returns a list of required features that a parser needs to implement to parse the following
     /// [`PrimitiveBlock`]s.
     pub fn required_features(&self) -> &[String] {
-        self.header.get_required_features()
+        self.header.required_features.as_slice()
     }
 
     /// Returns a list of optional features that a parser can choose to ignore.
     pub fn optional_features(&self) -> &[String] {
-        self.header.get_optional_features()
+        self.header.optional_features.as_slice()
     }
 
     /// Returns the name of the program that generated the file or `None` if unset.
     pub fn writing_program(&self) -> Option<&str> {
         if self.header.has_writingprogram() {
-            Some(self.header.get_writingprogram())
+            Some(self.header.writingprogram())
         } else {
             None
         }
@@ -114,7 +112,7 @@ impl PrimitiveBlock {
     /// contained strings are UTF-8 encoded but it is not safe to assume that (use
     /// `std::str::from_utf8`).
     pub fn raw_stringtable(&self) -> &[Vec<u8>] {
-        self.block.get_stringtable().get_s()
+        self.block.stringtable.s.as_slice()
     }
 }
 
@@ -140,7 +138,7 @@ impl<'a> PrimitiveGroup<'a> {
 
     /// Returns an iterator over the dense nodes in this group.
     pub fn dense_nodes(&self) -> DenseNodeIter<'a> {
-        DenseNodeIter::new(self.block, self.group.get_dense())
+        DenseNodeIter::new(self.block, self.group.dense.get_or_default())
     }
 
     /// Returns an iterator over the ways in this group.
@@ -180,7 +178,7 @@ impl<'a> BlockElementsIter<'a> {
         BlockElementsIter {
             block,
             state: ElementsIterState::Group,
-            groups: block.get_primitivegroup().iter(),
+            groups: block.primitivegroup.iter(),
             dense_nodes: DenseNodeIter::empty(block),
             nodes: [].iter(),
             ways: [].iter(),
@@ -197,10 +195,10 @@ impl<'a> BlockElementsIter<'a> {
             ElementsIterState::Group => match self.groups.next() {
                 Some(group) => {
                     self.state = ElementsIterState::DenseNode;
-                    self.dense_nodes = DenseNodeIter::new(self.block, group.get_dense());
-                    self.nodes = group.get_nodes().iter();
-                    self.ways = group.get_ways().iter();
-                    self.relations = group.get_relations().iter();
+                    self.dense_nodes = DenseNodeIter::new(self.block, group.dense.get_or_default());
+                    self.nodes = group.nodes.iter();
+                    self.ways = group.ways.iter();
+                    self.relations = group.relations.iter();
                     None
                 }
                 None => Some(None),
@@ -261,7 +259,7 @@ impl<'a> GroupIter<'a> {
     fn new(block: &'a osmformat::PrimitiveBlock) -> GroupIter<'a> {
         GroupIter {
             block,
-            groups: block.get_primitivegroup().iter(),
+            groups: block.primitivegroup.iter(),
         }
     }
 }
@@ -297,7 +295,7 @@ impl<'a> GroupNodeIter<'a> {
     ) -> GroupNodeIter<'a> {
         GroupNodeIter {
             block,
-            nodes: group.get_nodes().iter(),
+            nodes: group.nodes.iter(),
         }
     }
 }
@@ -333,7 +331,7 @@ impl<'a> GroupWayIter<'a> {
     ) -> GroupWayIter<'a> {
         GroupWayIter {
             block,
-            ways: group.get_ways().iter(),
+            ways: group.ways.iter(),
         }
     }
 }
@@ -369,7 +367,7 @@ impl<'a> GroupRelationIter<'a> {
     ) -> GroupRelationIter<'a> {
         GroupRelationIter {
             block,
-            rels: group.get_relations().iter(),
+            rels: group.relations.iter(),
         }
     }
 }
@@ -395,7 +393,7 @@ pub(crate) fn str_from_stringtable(
     block: &osmformat::PrimitiveBlock,
     index: usize,
 ) -> Result<&str> {
-    if let Some(vec) = block.get_stringtable().get_s().get(index) {
+    if let Some(vec) = block.stringtable.s.get(index) {
         std::str::from_utf8(vec)
             .map_err(|e| new_error(ErrorKind::StringtableUtf8 { err: e, index }))
     } else {

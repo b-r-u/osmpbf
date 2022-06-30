@@ -5,7 +5,7 @@ use std::result;
 use std::str;
 use std::str::Utf8Error;
 
-use protobuf::ProtobufError;
+use protobuf::Error as ProtobufError;
 
 // Error data structures are modeled just like in the `csv` crate by BurntSushi.
 

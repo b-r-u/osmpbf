@@ -102,7 +102,7 @@ impl Blob {
 
     /// Returns the type of a blob without decoding its content.
     pub fn get_type(&self) -> BlobType {
-        match self.header.get_field_type() {
+        match self.header.type_() {
             x if x == BlobType::OsmHeader.as_str() => BlobType::OsmHeader,
             x if x == BlobType::OsmData.as_str() => BlobType::OsmData,
             x => BlobType::Unknown(x),
@@ -143,7 +143,7 @@ impl BlobHeader {
 
     /// Returns the type of the following blob.
     pub fn blob_type(&self) -> BlobType {
-        match self.header.get_field_type() {
+        match self.header.type_() {
             "OSMHeader" => BlobType::OsmHeader,
             "OSMData" => BlobType::OsmData,
             x => BlobType::Unknown(x),
@@ -152,7 +152,7 @@ impl BlobHeader {
 
     /// Returns the size of the following blob in bytes.
     pub fn get_blob_size(&self) -> i32 {
-        self.header.get_datasize()
+        self.header.datasize()
     }
 }
 
@@ -207,7 +207,7 @@ impl<R: Read + Send> BlobReader<R> {
                         self.last_blob_ok = false;
                         Some(Err(new_blob_error(BlobError::InvalidHeaderSize)))
                     }
-                }
+                };
             }
         };
 
@@ -218,15 +218,15 @@ impl<R: Read + Send> BlobReader<R> {
             })));
         }
 
-        let header: fileformat::BlobHeader =
-            match Message::parse_from_reader(&mut self.reader.by_ref().take(header_size)) {
-                Ok(header) => header,
-                Err(e) => {
-                    self.offset = None;
-                    self.last_blob_ok = false;
-                    return Some(Err(new_protobuf_error(e, "blob header")));
-                }
-            };
+        let mut reader = self.reader.by_ref().take(header_size);
+        let header = match fileformat::BlobHeader::parse_from_reader(&mut reader) {
+            Ok(header) => header,
+            Err(e) => {
+                self.offset = None;
+                self.last_blob_ok = false;
+                return Some(Err(new_protobuf_error(e, "blob header")));
+            }
+        };
 
         self.offset = self.offset.map(|x| ByteOffset(x.0 + header_size));
 
@@ -280,9 +280,8 @@ impl<R: Read + Send> Iterator for BlobReader<R> {
             None => return None,
         };
 
-        let blob: fileformat::Blob = match Message::parse_from_reader(
-            &mut self.reader.by_ref().take(header.get_datasize() as u64),
-        ) {
+        let mut reader = self.reader.by_ref().take(header.datasize() as u64);
+        let blob = match fileformat::Blob::parse_from_reader(&mut reader) {
             Ok(blob) => blob,
             Err(e) => {
                 self.offset = None;
@@ -293,7 +292,7 @@ impl<R: Read + Send> Iterator for BlobReader<R> {
 
         self.offset = self
             .offset
-            .map(|x| ByteOffset(x.0 + header.get_datasize() as u64));
+            .map(|x| ByteOffset(x.0 + header.datasize() as u64));
 
         Some(Ok(Blob::new(header, blob, prev_offset)))
     }
@@ -424,7 +423,7 @@ impl<R: Read + Seek + Send> BlobReader<R> {
         };
 
         // skip blob (which also adjusts self.offset)
-        if let Err(err) = self.seek_raw(SeekFrom::Current(header.get_datasize() as i64)) {
+        if let Err(err) = self.seek_raw(SeekFrom::Current(header.datasize() as i64)) {
             self.last_blob_ok = false;
             return Some(Err(err));
         }
@@ -457,25 +456,20 @@ impl BlobReader<BufReader<File>> {
     }
 }
 
-pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
-where
-    T: protobuf::Message,
-{
+pub(crate) fn decode_blob<T: Message>(blob: &fileformat::Blob) -> Result<T> {
     if blob.has_raw() {
-        let size = blob.get_raw().len() as u64;
+        let size = blob.raw().len() as u64;
         if size < MAX_BLOB_MESSAGE_SIZE {
-            Message::parse_from_bytes(blob.get_raw())
-                .map_err(|e| new_protobuf_error(e, "raw blob data"))
+            T::parse_from_bytes(blob.raw()).map_err(|e| new_protobuf_error(e, "raw blob data"))
         } else {
             Err(new_blob_error(BlobError::MessageTooBig { size }))
         }
     } else if blob.has_zlib_data() {
         #[cfg(feature = "system-libz")]
-        let mut decoder = ZlibDecoder::new(blob.get_zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
+        let mut decoder = ZlibDecoder::new(blob.zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
         #[cfg(not(feature = "system-libz"))]
-        let mut decoder =
-            DeflateDecoder::from_zlib(blob.get_zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
-        Message::parse_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
+        let mut decoder = DeflateDecoder::from_zlib(blob.zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
+        T::parse_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
     } else {
         Err(new_blob_error(BlobError::Empty))
     }
@@ -496,7 +490,7 @@ mod tests {
 
         for (string, blob_type) in &pairs {
             let mut ff_header = fileformat::BlobHeader::new();
-            ff_header.set_field_type(string.to_string());
+            ff_header.set_type(string.to_string());
             let ff_blob = fileformat::Blob::new();
 
             let blob = Blob::new(ff_header, ff_blob, None);
