@@ -5,8 +5,11 @@ use crate::dense::DenseNode;
 use crate::error::Result;
 use crate::proto::osmformat;
 use crate::proto::osmformat::PrimitiveBlock;
+use crate::DeltaIter;
+use delta_encoding::DeltaDecoderExt;
 use osmformat::relation::MemberType;
 use protobuf::EnumOrUnknown;
+use std::slice::Iter as SliceIter;
 
 /// An enum with the OSM core elements: nodes, ways and relations.
 #[derive(Clone, Debug)]
@@ -192,10 +195,7 @@ impl<'a> Way<'a> {
     /// Finding the corresponding node might involve iterating over the whole PBF structure, but
     /// (to save space) ways themselves usually do not contain geo coordinates.
     pub fn refs(&self) -> WayRefIter<'a> {
-        WayRefIter {
-            deltas: self.osmway.refs.iter(),
-            current: 0,
-        }
+        self.osmway.refs.iter().copied().original()
     }
 
     /// Returns an iterator over the way's node locations (latitude, longitude).
@@ -208,10 +208,8 @@ impl<'a> Way<'a> {
     pub fn node_locations(&self) -> WayNodeLocationsIter<'a> {
         WayNodeLocationsIter {
             block: self.block,
-            dlats: self.osmway.lat.iter(),
-            dlons: self.osmway.lon.iter(),
-            clat: 0,
-            clon: 0,
+            lats: self.osmway.lat.iter().copied().original(),
+            lons: self.osmway.lon.iter().copied().original(),
         }
     }
 
@@ -323,31 +321,7 @@ impl<'a> Relation<'a> {
 /// An iterator over the references of a way.
 ///
 /// Each reference corresponds to a node id.
-#[derive(Clone, Debug)]
-pub struct WayRefIter<'a> {
-    deltas: std::slice::Iter<'a, i64>,
-    current: i64,
-}
-
-impl<'a> Iterator for WayRefIter<'a> {
-    type Item = i64;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.deltas.next() {
-            Some(&d) => {
-                self.current += d;
-                Some(self.current)
-            }
-            None => None,
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.deltas.size_hint()
-    }
-}
-
-impl<'a> ExactSizeIterator for WayRefIter<'a> {}
+pub type WayRefIter<'a> = DeltaIter<'a, i64>;
 
 pub struct WayNodeLocation {
     lat: i64,
@@ -392,31 +366,25 @@ impl WayNodeLocation {
 #[derive(Clone, Debug)]
 pub struct WayNodeLocationsIter<'a> {
     block: &'a osmformat::PrimitiveBlock,
-    dlats: std::slice::Iter<'a, i64>,
-    dlons: std::slice::Iter<'a, i64>,
-    clat: i64,
-    clon: i64,
+    lats: DeltaIter<'a, i64>,
+    lons: DeltaIter<'a, i64>,
 }
 
 impl<'a> Iterator for WayNodeLocationsIter<'a> {
     type Item = WayNodeLocation;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (self.dlats.next(), self.dlons.next()) {
-            (Some(&dlat), Some(&dlon)) => {
-                self.clat += dlat;
-                self.clon += dlon;
-                Some(WayNodeLocation {
-                    lat: self.block.lat_offset() + i64::from(self.block.granularity()) * self.clat,
-                    lon: self.block.lon_offset() + i64::from(self.block.granularity()) * self.clon,
-                })
-            }
+        match (self.lats.next(), self.lons.next()) {
+            (Some(lat), Some(lon)) => Some(WayNodeLocation {
+                lat: self.block.lat_offset() + i64::from(self.block.granularity()) * lat,
+                lon: self.block.lon_offset() + i64::from(self.block.granularity()) * lon,
+            }),
             _ => None,
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.dlats.size_hint()
+        self.lats.size_hint()
     }
 }
 
@@ -463,10 +431,9 @@ impl<'a> RelMember<'a> {
 #[derive(Clone, Debug)]
 pub struct RelMemberIter<'a> {
     block: &'a PrimitiveBlock,
-    role_sids: std::slice::Iter<'a, i32>,
-    member_id_deltas: std::slice::Iter<'a, i64>,
-    member_types: std::slice::Iter<'a, EnumOrUnknown<MemberType>>,
-    current_member_id: i64,
+    role_sids: SliceIter<'a, i32>,
+    member_ids: DeltaIter<'a, i64>,
+    member_types: SliceIter<'a, EnumOrUnknown<MemberType>>,
 }
 
 impl<'a> RelMemberIter<'a> {
@@ -474,9 +441,8 @@ impl<'a> RelMemberIter<'a> {
         RelMemberIter {
             block,
             role_sids: osmrel.roles_sid.iter(),
-            member_id_deltas: osmrel.memids.iter(),
+            member_ids: osmrel.memids.iter().copied().original(),
             member_types: osmrel.types.iter(),
-            current_member_id: 0,
         }
     }
 }
@@ -487,18 +453,15 @@ impl<'a> Iterator for RelMemberIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match (
             self.role_sids.next(),
-            self.member_id_deltas.next(),
+            self.member_ids.next(),
             self.member_types.next(),
         ) {
-            (Some(role_sid), Some(mem_id_delta), Some(member_type)) => {
-                self.current_member_id += *mem_id_delta;
-                Some(RelMember {
-                    block: self.block,
-                    role_sid: *role_sid,
-                    member_id: self.current_member_id,
-                    member_type: RelMemberType::from(*member_type),
-                })
-            }
+            (Some(role_sid), Some(member_id), Some(member_type)) => Some(RelMember {
+                block: self.block,
+                role_sid: *role_sid,
+                member_id,
+                member_type: RelMemberType::from(*member_type),
+            }),
             _ => None,
         }
     }
@@ -514,8 +477,8 @@ impl<'a> ExactSizeIterator for RelMemberIter<'a> {}
 #[derive(Clone, Debug)]
 pub struct TagIter<'a> {
     block: &'a PrimitiveBlock,
-    key_indices: std::slice::Iter<'a, u32>,
-    val_indices: std::slice::Iter<'a, u32>,
+    key_indices: SliceIter<'a, u32>,
+    val_indices: SliceIter<'a, u32>,
 }
 
 //TODO return Result?
@@ -541,8 +504,8 @@ impl<'a> ExactSizeIterator for TagIter<'a> {}
 /// stringtable of the current [`PrimitiveBlock`](crate::block::PrimitiveBlock).
 #[derive(Clone, Debug)]
 pub struct RawTagIter<'a> {
-    key_indices: std::slice::Iter<'a, u32>,
-    val_indices: std::slice::Iter<'a, u32>,
+    key_indices: SliceIter<'a, u32>,
+    val_indices: SliceIter<'a, u32>,
 }
 
 //TODO return Result?
