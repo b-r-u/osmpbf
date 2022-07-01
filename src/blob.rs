@@ -3,8 +3,8 @@
 use crate::block::{HeaderBlock, PrimitiveBlock};
 use crate::error::{new_blob_error, new_error, new_protobuf_error, BlobError, ErrorKind, Result};
 use crate::proto::fileformat;
-use crate::util::{parse_message_from_bytes, parse_message_from_reader};
 use byteorder::ReadBytesExt;
+use protobuf::{CodedInputStream, Message};
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -207,7 +207,7 @@ impl<R: Read + Send> BlobReader<R> {
                         self.last_blob_ok = false;
                         Some(Err(new_blob_error(BlobError::InvalidHeaderSize)))
                     }
-                }
+                };
             }
         };
 
@@ -218,15 +218,15 @@ impl<R: Read + Send> BlobReader<R> {
             })));
         }
 
-        let header: fileformat::BlobHeader =
-            match parse_message_from_reader(&mut self.reader.by_ref().take(header_size)) {
-                Ok(header) => header,
-                Err(e) => {
-                    self.offset = None;
-                    self.last_blob_ok = false;
-                    return Some(Err(new_protobuf_error(e, "blob header")));
-                }
-            };
+        let mut reader = self.reader.by_ref().take(header_size);
+        let header = match fileformat::BlobHeader::parse_from_reader(&mut reader) {
+            Ok(header) => header,
+            Err(e) => {
+                self.offset = None;
+                self.last_blob_ok = false;
+                return Some(Err(new_protobuf_error(e, "blob header")));
+            }
+        };
 
         self.offset = self.offset.map(|x| ByteOffset(x.0 + header_size));
 
@@ -280,9 +280,8 @@ impl<R: Read + Send> Iterator for BlobReader<R> {
             None => return None,
         };
 
-        let blob: fileformat::Blob = match parse_message_from_reader(
-            &mut self.reader.by_ref().take(header.get_datasize() as u64),
-        ) {
+        let mut reader = self.reader.by_ref().take(header.get_datasize() as u64);
+        let blob = match fileformat::Blob::parse_from_reader(&mut reader) {
             Ok(blob) => blob,
             Err(e) => {
                 self.offset = None;
@@ -459,13 +458,13 @@ impl BlobReader<BufReader<File>> {
 
 pub(crate) fn decode_blob<T>(blob: &fileformat::Blob) -> Result<T>
 where
-    T: protobuf::Message,
+    T: Message,
 {
     if blob.has_raw() {
         let size = blob.get_raw().len() as u64;
         if size < MAX_BLOB_MESSAGE_SIZE {
-            parse_message_from_bytes(blob.get_raw())
-                .map_err(|e| new_protobuf_error(e, "raw blob data"))
+            let mut stream = CodedInputStream::from_bytes(blob.get_raw());
+            T::parse_from(&mut stream).map_err(|e| new_protobuf_error(e, "raw blob data"))
         } else {
             Err(new_blob_error(BlobError::MessageTooBig { size }))
         }
@@ -475,7 +474,7 @@ where
         #[cfg(not(feature = "system-libz"))]
         let mut decoder =
             DeflateDecoder::from_zlib(blob.get_zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
-        parse_message_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
+        T::parse_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
     } else {
         Err(new_blob_error(BlobError::Empty))
     }

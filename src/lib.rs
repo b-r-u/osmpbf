@@ -80,7 +80,6 @@ mod error;
 pub mod indexed;
 pub mod mmap_blob;
 pub mod reader;
-mod util;
 
 mod proto {
     include!(concat!(env!("OUT_DIR"), "/mod.rs"));
