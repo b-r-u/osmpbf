@@ -90,15 +90,13 @@ fn check_header_block_content(block: &HeaderBlock, test_file: &TestFile) {
     let res = block.required_features();
     assert!(
         is_same_unordered(test_file.req, res),
-        "Required features {:?} don't match expected {:?}",
-        res,
+        "Required features {res:?} don't match expected {:?}",
         test_file.req
     );
     let res = block.optional_features();
     assert!(
         is_same_unordered(test_file.opt, res),
-        "Optional features {:?} don't match expected {:?}",
-        res,
+        "Optional features {res:?} don't match expected {:?}",
         test_file.opt
     );
 }

@@ -56,7 +56,7 @@ impl<'a> Node<'a> {
     /// reader.for_each(|element| {
     ///     if let Element::Node(node) = element {
     ///         for (key, value) in node.tags() {
-    ///             println!("key: {}, value: {}", key, value);
+    ///             println!("key: {key}, value: {value}");
     ///         }
     ///     }
     /// })?;
@@ -164,7 +164,7 @@ impl<'a> Way<'a> {
     /// reader.for_each(|element| {
     ///     if let Element::Way(way) = element {
     ///         for (key, value) in way.tags() {
-    ///             println!("key: {}, value: {}", key, value);
+    ///             println!("key: {key}, value: {value}");
     ///         }
     ///     }
     /// })?;
@@ -273,7 +273,7 @@ impl<'a> Relation<'a> {
     /// reader.for_each(|element| {
     ///     if let Element::Relation(relation) = element {
     ///         for (key, value) in relation.tags() {
-    ///             println!("key: {}, value: {}", key, value);
+    ///             println!("key: {key}, value: {value}");
     ///         }
     ///     }
     /// })?;

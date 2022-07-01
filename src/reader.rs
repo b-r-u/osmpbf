@@ -58,7 +58,7 @@ impl<R: Read + Send> ElementReader<R> {
     ///     }
     /// })?;
     ///
-    /// println!("Number of ways: {}", ways);
+    /// println!("Number of ways: {ways}");
     ///
     /// # Ok(())
     /// # }
@@ -111,7 +111,7 @@ impl<R: Read + Send> ElementReader<R> {
     ///     |a, b| a + b   // Sum the partial results
     /// )?;
     ///
-    /// println!("Number of ways: {}", ways);
+    /// println!("Number of ways: {ways}");
     /// # Ok(())
     /// # }
     /// # foo().unwrap();
