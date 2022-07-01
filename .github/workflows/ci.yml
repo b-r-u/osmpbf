@@ -39,7 +39,7 @@ jobs:
     strategy:
       matrix: 
         # Which Rust versions to test - latest and MSRV should be enough for now. 
-        rust_versions: ["1.62.0", "1.58.0"]
+        rust_version: ["1.62.0", "1.58.0"]
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust
