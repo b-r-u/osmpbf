@@ -207,7 +207,7 @@ impl<R: Read + Send> BlobReader<R> {
                         self.last_blob_ok = false;
                         Some(Err(new_blob_error(BlobError::InvalidHeaderSize)))
                     }
-                }
+                };
             }
         };
 
@@ -475,7 +475,8 @@ where
         #[cfg(not(feature = "system-libz"))]
         let mut decoder =
             DeflateDecoder::from_zlib(blob.get_zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
-        Message::parse_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
+        Message::parse_from_reader(&mut decoder)
+            .map_err(|e| new_protobuf_error(e, "blob zlib data"))
     } else {
         Err(new_blob_error(BlobError::Empty))
     }
