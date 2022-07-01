@@ -34,7 +34,7 @@ reader.for_each(|element| {
     }
 })?;
 
-println!("Number of ways: {}", ways);
+println!("Number of ways: {ways}");
 ```
 
 In this second example, we also count the ways but make use of all cores by
@@ -57,7 +57,7 @@ let ways = reader.par_map_reduce(
     |a, b| a + b   // Sum the partial results
 )?;
 
-println!("Number of ways: {}", ways);
+println!("Number of ways: {ways}");
 ```
 
 ## The PBF format

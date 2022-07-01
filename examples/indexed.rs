@@ -32,6 +32,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
 
     // Print result
-    println!("ways:  {}\nnodes: {}", ways, nodes);
+    println!("ways:  {ways}\nnodes: {nodes}");
     Ok(())
 }

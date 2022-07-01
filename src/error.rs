@@ -151,22 +151,22 @@ impl fmt::Display for Error {
         match *self.0 {
             ErrorKind::Io(ref err) => err.fmt(f),
             ErrorKind::Protobuf { ref err, location } => {
-                write!(f, "protobuf error at '{}': {}", location, err)
+                write!(f, "protobuf error at '{location}': {err}")
             }
             ErrorKind::StringtableUtf8 { ref err, index } => {
-                write!(f, "invalid UTF-8 at string table index {}: {}", index, err)
+                write!(f, "invalid UTF-8 at string table index {index}: {err}")
             }
             ErrorKind::StringtableIndexOutOfBounds { index } => {
-                write!(f, "stringtable index out of bounds: {}", index)
+                write!(f, "stringtable index out of bounds: {index}")
             }
             ErrorKind::Blob(BlobError::InvalidHeaderSize) => {
                 write!(f, "blob header size could not be decoded")
             }
             ErrorKind::Blob(BlobError::HeaderTooBig { size }) => {
-                write!(f, "blob header is too big: {} bytes", size)
+                write!(f, "blob header is too big: {size} bytes")
             }
             ErrorKind::Blob(BlobError::MessageTooBig { size }) => {
-                write!(f, "blob message is too big: {} bytes", size)
+                write!(f, "blob message is too big: {size} bytes")
             }
             ErrorKind::Blob(BlobError::Empty) => {
                 write!(f, "blob is missing fields 'raw' and 'zlib_data'")

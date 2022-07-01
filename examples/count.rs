@@ -22,12 +22,12 @@ fn main() {
         |a, b| (a.0 + b.0, a.1 + b.1, a.2 + b.2),
     ) {
         Ok((nodes, ways, relations)) => {
-            println!("Nodes: {}", nodes);
-            println!("Ways: {}", ways);
-            println!("Relations: {}", relations);
+            println!("Nodes: {nodes}");
+            println!("Ways: {ways}");
+            println!("Relations: {relations}");
         }
         Err(e) => {
-            println!("{}", e);
+            println!("{e}");
         }
     }
 }

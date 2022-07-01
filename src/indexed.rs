@@ -253,7 +253,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
     ///     },
     /// )?;
     ///
-    /// println!("ways:  {}\nnodes: {}", ways, nodes);
+    /// println!("ways:  {ways}\nnodes: {nodes}");
     ///
     /// # assert_eq!(ways, 1);
     /// # assert_eq!(nodes, 3);
@@ -354,7 +354,7 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
     ///     },
     /// )?;
     ///
-    /// println!("nodes: {}", nodes);
+    /// println!("nodes: {nodes}");
     ///
     /// # assert_eq!(nodes, 3);
     /// # Ok(())

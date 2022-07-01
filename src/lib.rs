@@ -28,7 +28,7 @@ reader.for_each(|element| {
     }
 })?;
 
-println!("Number of ways: {}", ways);
+println!("Number of ways: {ways}");
 # assert_eq!(ways, 1);
 # Ok::<(), std::io::Error>(())
 ```
@@ -55,7 +55,7 @@ let ways = reader.par_map_reduce(
     |a, b| a + b   // Sum the partial results
 )?;
 
-println!("Number of ways: {}", ways);
+println!("Number of ways: {ways}");
 # assert_eq!(ways, 1);
 # Ok::<(), std::io::Error>(())
 ```
