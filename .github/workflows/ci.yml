@@ -19,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Print versions
+        run: rustc -V && cargo -V
       - name: Ensure code format
         run: cargo fmt --all -- --check
       - name: Build
