@@ -614,11 +614,8 @@ impl<'a> Info<'a> {
     /// Returns the visibility status of an element. This is only relevant if the PBF file contains
     /// historical information.
     pub fn visible(&self) -> bool {
-        match self.info.visible {
-            Some(v) => v,
-            // If the visible flag is not present it must be assumed to be true.
-            None => true,
-        }
+        // If the visible flag is not present it must be assumed to be true.
+        self.info.visible.unwrap_or(true)
     }
 
     /// Returns true if the element was deleted.

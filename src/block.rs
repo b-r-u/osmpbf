@@ -19,15 +19,12 @@ impl HeaderBlock {
 
     /// Returns the (optional) bounding box of the included features.
     pub fn bbox(&self) -> Option<HeaderBBox> {
-        match self.header.bbox.as_ref() {
-            Some(bbox) => Some(HeaderBBox {
-                left: (bbox.left() as f64) * 1.0_e-9,
-                right: (bbox.right() as f64) * 1.0_e-9,
-                top: (bbox.top() as f64) * 1.0_e-9,
-                bottom: (bbox.bottom() as f64) * 1.0_e-9,
-            }),
-            None => None,
-        }
+        self.header.bbox.as_ref().map(|bbox| HeaderBBox {
+            left: (bbox.left() as f64) * 1.0_e-9,
+            right: (bbox.right() as f64) * 1.0_e-9,
+            top: (bbox.top() as f64) * 1.0_e-9,
+            bottom: (bbox.bottom() as f64) * 1.0_e-9,
+        })
     }
 
     /// Returns a list of required features that a parser needs to implement to parse the following
