@@ -20,7 +20,7 @@ pub struct BlobWriter<W: Write + Send> {
 }
 
 /// The content type of a blob.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BlobEncoding {
     /// Block is stored uncompressed in blob
     Raw,
