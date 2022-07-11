@@ -5,6 +5,8 @@ use crate::dense::DenseNode;
 use crate::error::Result;
 use crate::proto::osmformat;
 use crate::proto::osmformat::PrimitiveBlock;
+use osmformat::relation::MemberType;
+use protobuf::EnumOrUnknown;
 
 /// An enum with the OSM core elements: nodes, ways and relations.
 #[derive(Clone, Debug)]
@@ -39,7 +41,7 @@ impl<'a> Node<'a> {
     /// Returns the node id. It should be unique between nodes and might be negative to indicate
     /// that the element has not yet been uploaded to a server.
     pub fn id(&self) -> i64 {
-        self.osmnode.get_id()
+        self.osmnode.id()
     }
 
     /// Returns an iterator over the tags of this node
@@ -56,7 +58,7 @@ impl<'a> Node<'a> {
     /// reader.for_each(|element| {
     ///     if let Element::Node(node) = element {
     ///         for (key, value) in node.tags() {
-    ///             println!("key: {}, value: {}", key, value);
+    ///             println!("key: {key}, value: {value}");
     ///         }
     ///     }
     /// })?;
@@ -68,14 +70,14 @@ impl<'a> Node<'a> {
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
-            key_indices: self.osmnode.get_keys().iter(),
-            val_indices: self.osmnode.get_vals().iter(),
+            key_indices: self.osmnode.keys.iter(),
+            val_indices: self.osmnode.vals.iter(),
         }
     }
 
     /// Returns additional metadata for this element.
     pub fn info(&self) -> Info<'a> {
-        Info::new(self.block, self.osmnode.get_info())
+        Info::new(self.block, self.osmnode.info.get_or_default())
     }
 
     /// Returns the latitude coordinate in degrees.
@@ -85,8 +87,7 @@ impl<'a> Node<'a> {
 
     /// Returns the latitude coordinate in nanodegrees (10⁻⁹).
     pub fn nano_lat(&self) -> i64 {
-        self.block.get_lat_offset()
-            + i64::from(self.block.get_granularity()) * self.osmnode.get_lat()
+        self.block.lat_offset() + i64::from(self.block.granularity()) * self.osmnode.lat()
     }
 
     /// Returns the latitude coordinate in decimicrodegrees (10⁻⁷).
@@ -101,8 +102,7 @@ impl<'a> Node<'a> {
 
     /// Returns the longitude in nanodegrees (10⁻⁹).
     pub fn nano_lon(&self) -> i64 {
-        self.block.get_lon_offset()
-            + i64::from(self.block.get_granularity()) * self.osmnode.get_lon()
+        self.block.lon_offset() + i64::from(self.block.granularity()) * self.osmnode.lon()
     }
 
     /// Returns the longitude coordinate in decimicrodegrees (10⁻⁷).
@@ -116,8 +116,8 @@ impl<'a> Node<'a> {
     /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
-            key_indices: self.osmnode.get_keys().iter(),
-            val_indices: self.osmnode.get_vals().iter(),
+            key_indices: self.osmnode.keys.iter(),
+            val_indices: self.osmnode.vals.iter(),
         }
     }
 
@@ -126,7 +126,7 @@ impl<'a> Node<'a> {
     /// contained strings are UTF-8 encoded but it is not safe to assume that (use
     /// `std::str::from_utf8`).
     pub fn raw_stringtable(&self) -> &[Vec<u8>] {
-        self.block.get_stringtable().get_s()
+        self.block.stringtable.s.as_slice()
     }
 }
 
@@ -147,7 +147,7 @@ impl<'a> Way<'a> {
 
     /// Returns the way id.
     pub fn id(&self) -> i64 {
-        self.osmway.get_id()
+        self.osmway.id()
     }
 
     /// Returns an iterator over the tags of this way
@@ -164,7 +164,7 @@ impl<'a> Way<'a> {
     /// reader.for_each(|element| {
     ///     if let Element::Way(way) = element {
     ///         for (key, value) in way.tags() {
-    ///             println!("key: {}, value: {}", key, value);
+    ///             println!("key: {key}, value: {value}");
     ///         }
     ///     }
     /// })?;
@@ -176,14 +176,14 @@ impl<'a> Way<'a> {
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
-            key_indices: self.osmway.get_keys().iter(),
-            val_indices: self.osmway.get_vals().iter(),
+            key_indices: self.osmway.keys.iter(),
+            val_indices: self.osmway.vals.iter(),
         }
     }
 
     /// Returns additional metadata for this element.
     pub fn info(&self) -> Info<'a> {
-        Info::new(self.block, self.osmway.get_info())
+        Info::new(self.block, self.osmway.info.get_or_default())
     }
 
     /// Returns an iterator over the references of this way. Each reference should correspond to a
@@ -193,7 +193,7 @@ impl<'a> Way<'a> {
     /// (to save space) ways themselves usually do not contain geo coordinates.
     pub fn refs(&self) -> WayRefIter<'a> {
         WayRefIter {
-            deltas: self.osmway.get_refs().iter(),
+            deltas: self.osmway.refs.iter(),
             current: 0,
         }
     }
@@ -208,8 +208,8 @@ impl<'a> Way<'a> {
     pub fn node_locations(&self) -> WayNodeLocationsIter<'a> {
         WayNodeLocationsIter {
             block: self.block,
-            dlats: self.osmway.get_lat().iter(),
-            dlons: self.osmway.get_lon().iter(),
+            dlats: self.osmway.lat.iter(),
+            dlons: self.osmway.lon.iter(),
             clat: 0,
             clon: 0,
         }
@@ -217,7 +217,7 @@ impl<'a> Way<'a> {
 
     /// Returns a slice of delta coded node ids.
     pub fn raw_refs(&self) -> &[i64] {
-        self.osmway.get_refs()
+        self.osmway.refs.as_slice()
     }
 
     /// Returns an iterator over the tags of this way
@@ -226,8 +226,8 @@ impl<'a> Way<'a> {
     /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
-            key_indices: self.osmway.get_keys().iter(),
-            val_indices: self.osmway.get_vals().iter(),
+            key_indices: self.osmway.keys.iter(),
+            val_indices: self.osmway.vals.iter(),
         }
     }
 
@@ -236,7 +236,7 @@ impl<'a> Way<'a> {
     /// contained strings are UTF-8 encoded but it is not safe to assume that (use
     /// `std::str::from_utf8`).
     pub fn raw_stringtable(&self) -> &[Vec<u8>] {
-        self.block.get_stringtable().get_s()
+        self.block.stringtable.s.as_slice()
     }
 }
 
@@ -256,7 +256,7 @@ impl<'a> Relation<'a> {
 
     /// Returns the relation id.
     pub fn id(&self) -> i64 {
-        self.osmrel.get_id()
+        self.osmrel.id()
     }
 
     /// Returns an iterator over the tags of this relation
@@ -273,7 +273,7 @@ impl<'a> Relation<'a> {
     /// reader.for_each(|element| {
     ///     if let Element::Relation(relation) = element {
     ///         for (key, value) in relation.tags() {
-    ///             println!("key: {}, value: {}", key, value);
+    ///             println!("key: {key}, value: {value}");
     ///         }
     ///     }
     /// })?;
@@ -285,14 +285,14 @@ impl<'a> Relation<'a> {
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
-            key_indices: self.osmrel.get_keys().iter(),
-            val_indices: self.osmrel.get_vals().iter(),
+            key_indices: self.osmrel.keys.iter(),
+            val_indices: self.osmrel.vals.iter(),
         }
     }
 
     /// Returns additional metadata for this element.
     pub fn info(&self) -> Info<'a> {
-        Info::new(self.block, self.osmrel.get_info())
+        Info::new(self.block, self.osmrel.info.get_or_default())
     }
 
     /// Returns an iterator over the members of this relation.
@@ -306,8 +306,8 @@ impl<'a> Relation<'a> {
     /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
     pub fn raw_tags(&self) -> RawTagIter<'a> {
         RawTagIter {
-            key_indices: self.osmrel.get_keys().iter(),
-            val_indices: self.osmrel.get_vals().iter(),
+            key_indices: self.osmrel.keys.iter(),
+            val_indices: self.osmrel.vals.iter(),
         }
     }
 
@@ -316,7 +316,7 @@ impl<'a> Relation<'a> {
     /// contained strings are UTF-8 encoded but it is not safe to assume that (use
     /// `std::str::from_utf8`).
     pub fn raw_stringtable(&self) -> &[Vec<u8>] {
-        self.block.get_stringtable().get_s()
+        self.block.stringtable.s.as_slice()
     }
 }
 
@@ -407,10 +407,8 @@ impl<'a> Iterator for WayNodeLocationsIter<'a> {
                 self.clat += dlat;
                 self.clon += dlon;
                 Some(WayNodeLocation {
-                    lat: self.block.get_lat_offset()
-                        + i64::from(self.block.get_granularity()) * self.clat,
-                    lon: self.block.get_lon_offset()
-                        + i64::from(self.block.get_granularity()) * self.clon,
+                    lat: self.block.lat_offset() + i64::from(self.block.granularity()) * self.clat,
+                    lon: self.block.lon_offset() + i64::from(self.block.granularity()) * self.clon,
                 })
             }
             _ => None,
@@ -432,12 +430,12 @@ pub enum RelMemberType {
     Relation,
 }
 
-impl From<osmformat::Relation_MemberType> for RelMemberType {
-    fn from(rmt: osmformat::Relation_MemberType) -> RelMemberType {
-        match rmt {
-            osmformat::Relation_MemberType::NODE => RelMemberType::Node,
-            osmformat::Relation_MemberType::WAY => RelMemberType::Way,
-            osmformat::Relation_MemberType::RELATION => RelMemberType::Relation,
+impl From<EnumOrUnknown<MemberType>> for RelMemberType {
+    fn from(rmt: EnumOrUnknown<MemberType>) -> RelMemberType {
+        match rmt.unwrap() {
+            MemberType::NODE => RelMemberType::Node,
+            MemberType::WAY => RelMemberType::Way,
+            MemberType::RELATION => RelMemberType::Relation,
         }
     }
 }
@@ -467,7 +465,7 @@ pub struct RelMemberIter<'a> {
     block: &'a PrimitiveBlock,
     role_sids: std::slice::Iter<'a, i32>,
     member_id_deltas: std::slice::Iter<'a, i64>,
-    member_types: std::slice::Iter<'a, osmformat::Relation_MemberType>,
+    member_types: std::slice::Iter<'a, EnumOrUnknown<MemberType>>,
     current_member_id: i64,
 }
 
@@ -475,9 +473,9 @@ impl<'a> RelMemberIter<'a> {
     fn new(block: &'a PrimitiveBlock, osmrel: &'a osmformat::Relation) -> RelMemberIter<'a> {
         RelMemberIter {
             block,
-            role_sids: osmrel.get_roles_sid().iter(),
-            member_id_deltas: osmrel.get_memids().iter(),
-            member_types: osmrel.get_types().iter(),
+            role_sids: osmrel.roles_sid.iter(),
+            member_id_deltas: osmrel.memids.iter(),
+            member_types: osmrel.types.iter(),
             current_member_id: 0,
         }
     }
@@ -579,17 +577,13 @@ impl<'a> Info<'a> {
 
     /// Returns the version of this element.
     pub fn version(&self) -> Option<i32> {
-        if self.info.has_version() {
-            Some(self.info.get_version())
-        } else {
-            None
-        }
+        self.info.version
     }
 
     /// Returns the time stamp in milliseconds since the epoch.
     pub fn milli_timestamp(&self) -> Option<i64> {
         if self.info.has_timestamp() {
-            Some(self.info.get_timestamp() * i64::from(self.block.get_date_granularity()))
+            Some(self.info.timestamp() * i64::from(self.block.date_granularity()))
         } else {
             None
         }
@@ -597,20 +591,12 @@ impl<'a> Info<'a> {
 
     /// Returns the changeset id.
     pub fn changeset(&self) -> Option<i64> {
-        if self.info.has_changeset() {
-            Some(self.info.get_changeset())
-        } else {
-            None
-        }
+        self.info.changeset
     }
 
     /// Returns the user id.
     pub fn uid(&self) -> Option<i32> {
-        if self.info.has_uid() {
-            Some(self.info.get_uid())
-        } else {
-            None
-        }
+        self.info.uid
     }
 
     /// Returns the user name.
@@ -618,7 +604,7 @@ impl<'a> Info<'a> {
         if self.info.has_user_sid() {
             Some(str_from_stringtable(
                 self.block,
-                self.info.get_user_sid() as usize,
+                self.info.user_sid() as usize,
             ))
         } else {
             None
@@ -628,12 +614,8 @@ impl<'a> Info<'a> {
     /// Returns the visibility status of an element. This is only relevant if the PBF file contains
     /// historical information.
     pub fn visible(&self) -> bool {
-        if self.info.has_visible() {
-            self.info.get_visible()
-        } else {
-            // If the visible flag is not present it must be assumed to be true.
-            true
-        }
+        // If the visible flag is not present it must be assumed to be true.
+        self.info.visible.unwrap_or(true)
     }
 
     /// Returns true if the element was deleted.

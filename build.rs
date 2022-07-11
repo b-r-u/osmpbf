@@ -11,12 +11,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let proto_files = ["src/proto/fileformat.proto", "src/proto/osmformat.proto"];
 
     for path in &proto_files {
-        println!("cargo:rerun-if-changed={}", path);
+        println!("cargo:rerun-if-changed={path}");
     }
 
     let out_dir = std::env::var("OUT_DIR")?;
 
-    protobuf_codegen_pure::Codegen::new()
+    protobuf_codegen::Codegen::new()
+        .pure()
         .out_dir(&out_dir)
         .inputs(&proto_files)
         .include("src/proto")

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   schedule:
     - cron: '17 2 * * *'
 
@@ -18,12 +18,37 @@ jobs:
       RUSTFLAGS: "-D warnings"
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
-    - name: Run tests (no default features)
-      run: cargo test --verbose --no-default-features
-    - name: Build documentation
-      run: cargo doc --verbose
+      - uses: actions/checkout@v3
+      - name: Print versions
+        run: rustc -V && cargo -V
+      - name: Ensure code format
+        run: cargo fmt --all -- --check
+      - name: Build
+        run: cargo build --verbose
+      - name: Run tests
+        run: cargo test --verbose
+      - name: Run tests (no default features)
+        run: cargo test --verbose --no-default-features
+      - name: Lint
+        run: cargo clippy -- -Dwarnings
+      - name: Build documentation
+        run: cargo doc --verbose
+
+  TestMatrix:
+    env:
+      RUSTFLAGS: "-D warnings"
+    strategy:
+      matrix:
+        # We test using the latest stable and MSRV Rust versions.
+        rust_version: ["stable", "1.60.0"]
+        runs_on: ["ubuntu-latest", "windows-latest", "macos-latest"]
+    runs-on: "${{ matrix.runs_on }}"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: "${{ matrix.rust_version }}"
+          override: true
+          profile: minimal
+      - run: cargo test

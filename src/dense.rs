@@ -39,7 +39,7 @@ impl<'a> DenseNode<'a> {
 
     /// Returns the latitude coordinate in nanodegrees (10⁻⁹).
     pub fn nano_lat(&self) -> i64 {
-        self.block.get_lat_offset() + i64::from(self.block.get_granularity()) * self.lat
+        self.block.lat_offset() + i64::from(self.block.granularity()) * self.lat
     }
 
     /// Returns the latitude coordinate in decimicrodegrees (10⁻⁷).
@@ -54,7 +54,7 @@ impl<'a> DenseNode<'a> {
 
     /// Returns the longitude in nanodegrees (10⁻⁹).
     pub fn nano_lon(&self) -> i64 {
-        self.block.get_lon_offset() + i64::from(self.block.get_granularity()) * self.lon
+        self.block.lon_offset() + i64::from(self.block.granularity()) * self.lon
     }
 
     /// Returns the longitude coordinate in decimicrodegrees (10⁻⁷).
@@ -101,16 +101,19 @@ impl<'a> DenseNodeIter<'a> {
         block: &'a osmformat::PrimitiveBlock,
         osmdense: &'a osmformat::DenseNodes,
     ) -> DenseNodeIter<'a> {
-        let info_iter = Some(DenseNodeInfoIter::new(block, osmdense.get_denseinfo()));
+        let info_iter = Some(DenseNodeInfoIter::new(
+            block,
+            osmdense.denseinfo.get_or_default(),
+        ));
         DenseNodeIter {
             block,
-            dids: osmdense.get_id().iter(),
+            dids: osmdense.id.iter(),
             cid: 0,
-            dlats: osmdense.get_lat().iter(),
+            dlats: osmdense.lat.iter(),
             clat: 0,
-            dlons: osmdense.get_lon().iter(),
+            dlons: osmdense.lon.iter(),
             clon: 0,
-            keys_vals_slice: osmdense.get_keys_vals(),
+            keys_vals_slice: osmdense.keys_vals.as_slice(),
             keys_vals_index: 0,
             info_iter,
         }
@@ -220,7 +223,7 @@ impl<'a> DenseNodeInfo<'a> {
 
     /// Returns the time stamp in milliseconds since the epoch.
     pub fn milli_timestamp(&self) -> i64 {
-        self.timestamp * i64::from(self.block.get_date_granularity())
+        self.timestamp * i64::from(self.block.date_granularity())
     }
 
     /// Returns the visibility status of an element. This is only relevant if the PBF file contains
@@ -259,16 +262,16 @@ impl<'a> DenseNodeInfoIter<'a> {
     ) -> DenseNodeInfoIter<'a> {
         DenseNodeInfoIter {
             block,
-            versions: info.get_version().iter(),
-            dtimestamps: info.get_timestamp().iter(),
+            versions: info.version.iter(),
+            dtimestamps: info.timestamp.iter(),
             ctimestamp: 0,
-            dchangesets: info.get_changeset().iter(),
+            dchangesets: info.changeset.iter(),
             cchangeset: 0,
-            duids: info.get_uid().iter(),
+            duids: info.uid.iter(),
             cuid: 0,
-            duser_sids: info.get_user_sid().iter(),
+            duser_sids: info.user_sid.iter(),
             cuser_sid: 0,
-            visible: info.get_visible().iter(),
+            visible: info.visible.iter(),
         }
     }
 }

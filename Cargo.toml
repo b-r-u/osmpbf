@@ -2,16 +2,13 @@
 name = "osmpbf"
 version = "0.2.8"
 authors = ["Johannes Hofmann <mail@b-r-u.org>"]
-readme = "README.md"
 repository = "https://github.com/b-r-u/osmpbf"
 homepage = "https://github.com/b-r-u/osmpbf"
-description = """
-A reader for the OpenStreetMap PBF file format (*.osm.pbf).
-"""
+description = "A reader for the OpenStreetMap PBF file format (*.osm.pbf)."
 categories = ["parser-implementations", "encoding", "science"]
 keywords = ["openstreetmap", "osm", "pbf", "protocolbuffer", "protobuf"]
-license = "MIT/Apache-2.0"
-edition = "2018"
+license = "MIT OR Apache-2.0"
+edition = "2021"
 
 [features]
 default = []
@@ -21,11 +18,11 @@ system-libz = ["flate2/zlib"]
 byteorder = "1.4"
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
 memmap = "0.7"
-protobuf = "2.27"
+protobuf = "3.1"
 rayon = "1.5"
 
 [dev-dependencies]
 assert_approx_eq = "1.1.0"
 
 [build-dependencies]
-protobuf-codegen-pure = "2"
+protobuf-codegen = "3.1"
