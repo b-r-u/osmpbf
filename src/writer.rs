@@ -6,7 +6,7 @@ use std::io::Write;
 
 use byteorder::WriteBytesExt;
 use flate2::{write::ZlibEncoder, Compression};
-use protobuf::Message;
+use protobuf::{Message, MessageField};
 
 use crate::blob::{Blob, BlobType, MAX_BLOB_HEADER_SIZE, MAX_BLOB_MESSAGE_SIZE};
 use crate::block::{HeaderBlock, PrimitiveBlock};
@@ -43,19 +43,17 @@ impl<W: Write + Send> BlobWriter<W> {
         header: fileformat::BlobHeader,
         blob: fileformat::Blob,
     ) -> Result<()> {
-        assert_eq!(
-            i64::from(blob.compute_size()),
-            i64::from(header.get_datasize())
-        );
-        let header_size = header.compute_size();
+        assert_eq!(blob.compute_size() as i64, i64::from(header.datasize()),);
+        let header_size: u64 = header.compute_size();
 
-        if u64::from(header_size) >= MAX_BLOB_HEADER_SIZE {
+        if header_size >= MAX_BLOB_HEADER_SIZE {
             return Err(new_blob_error(BlobError::HeaderTooBig {
-                size: u64::from(header_size),
+                size: header_size,
             }));
         }
 
-        self.writer.write_u32::<byteorder::BigEndian>(header_size)?;
+        self.writer
+            .write_u32::<byteorder::BigEndian>(header_size as u32)?;
         header
             .write_to_writer(&mut self.writer)
             .map_err(|e| new_protobuf_error(e, "writing blob header"))?;
@@ -113,7 +111,7 @@ impl<W: Write + Send> BlobWriter<W> {
 
         let mut header = fileformat::BlobHeader::new();
         header.set_datasize(blob.compute_size() as i32);
-        header.set_field_type(blob_type.as_str().to_string());
+        header.set_type(blob_type.as_str().to_string());
         //TODO optionally set indexdata
 
         self.write_blob_raw(header, blob)
@@ -162,8 +160,8 @@ impl<W: Write + Send> BlockBuilder<W> {
         let mut block = osmformat::PrimitiveBlock::new();
         let mut st = osmformat::StringTable::new();
         // first element should be blank
-        st.set_s(vec![vec![]].into());
-        block.set_stringtable(st);
+        st.s = vec![vec![]];
+        block.stringtable = MessageField::some(st);
         Self {
             blob_writer,
             block,
@@ -177,7 +175,7 @@ impl<W: Write + Send> BlockBuilder<W> {
         match self.string_map.entry(entry.clone()) {
             Entry::Occupied(occ) => *occ.get(),
             Entry::Vacant(vac) => {
-                let st = self.block.mut_stringtable().mut_s();
+                let st = &mut self.block.stringtable.as_mut().unwrap().s;
                 st.push(entry);
                 *vac.insert(st.len() - 1)
             }
@@ -216,10 +214,7 @@ impl<'a, W: Write + Send> NodeGroupBuilder<'a, W> {
     }
 
     pub fn finish(self) {
-        self.block_builder
-            .block
-            .mut_primitivegroup()
-            .push(self.group);
+        self.block_builder.block.primitivegroup.push(self.group);
     }
 }
 
@@ -247,10 +242,10 @@ impl<'a, 'b, W: Write + Send> NodeBuilder<'a, 'b, W> {
     {
         let block = &mut self.node_group_builder.block_builder;
         self.node
-            .mut_keys()
+            .keys
             .push(block.add_string_table_entry(key.into()) as u32);
         self.node
-            .mut_vals()
+            .vals
             .push(block.add_string_table_entry(val.into()) as u32);
         self
     }
@@ -258,7 +253,7 @@ impl<'a, 'b, W: Write + Send> NodeBuilder<'a, 'b, W> {
     //TODO implement setting Info
 
     pub fn finish(self) {
-        self.node_group_builder.group.mut_nodes().push(self.node);
+        self.node_group_builder.group.nodes.push(self.node);
     }
 }
 
@@ -280,8 +275,8 @@ mod tests {
 
         {
             let mut block = osmformat::PrimitiveBlock::new();
-            block.set_stringtable(osmformat::StringTable::new());
-            block.set_primitivegroup(Vec::new().into());
+            block.stringtable = MessageField::some(osmformat::StringTable::new());
+            block.primitivegroup = Vec::new();
             let block = PrimitiveBlock::new(block);
 
             w.write_primitive_block(block, BlobEncoding::Zlib { level: 6 })
