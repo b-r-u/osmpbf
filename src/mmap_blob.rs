@@ -14,7 +14,7 @@ use std::path::Path;
 /// A read-only memory map.
 #[derive(Debug)]
 pub struct Mmap {
-    mmap: memmap::Mmap,
+    mmap: memmap2::Mmap,
 }
 
 impl Mmap {
@@ -37,7 +37,7 @@ impl Mmap {
     /// # foo().unwrap();
     /// ```
     pub unsafe fn from_file(file: &File) -> Result<Mmap> {
-        memmap::Mmap::map(file)
+        memmap2::Mmap::map(file)
             .map(|m| Mmap { mmap: m })
             .map_err(|e| e.into())
     }
@@ -61,7 +61,7 @@ impl Mmap {
     /// ```
     pub unsafe fn from_path<P: AsRef<Path>>(path: P) -> Result<Mmap> {
         let file = File::open(&path)?;
-        memmap::Mmap::map(&file)
+        memmap2::Mmap::map(&file)
             .map(|m| Mmap { mmap: m })
             .map_err(|e| e.into())
     }
