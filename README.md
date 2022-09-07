@@ -60,6 +60,11 @@ let ways = reader.par_map_reduce(
 println!("Number of ways: {ways}");
 ```
 
+## Build Features
+* `system-libz` (default) -- use `zlib` system library for decoding
+* `system-libz-ng` -- use `zlib-ng` library for better performance.
+* `default-features = false` -- use a slower Rust-based implementation.
+
 ## The PBF format
 
 To effectively use the more lower-level features of this library it is useful to
