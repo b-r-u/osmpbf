@@ -11,16 +11,14 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [features]
-# Note that both libz and libz-ng can be enabled at the same time.
-# In this case libz will use the ng version internally.
-default = ["system-libz"]
-system-libz = ["flate2", "flate2/zlib"]
-system-libz-ng = ["flate2", "flate2/zlib-ng"]
+default = ["rust-zlib"]
+rust-zlib = ["flate2/rust_backend"]
+zlib = ["flate2/zlib"]
+zlib-ng = ["flate2/zlib-ng"]
 
 [dependencies]
 byteorder = "1.4"
-flate2 = { version = "1.0", default-features = false, optional = true }
-inflate = "0.4"
+flate2 = { version = "1.0", default-features = false }
 memmap2 = "0.5"
 protobuf = "3.1"
 rayon = "1.5"

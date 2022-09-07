@@ -11,15 +11,12 @@ fn bench_count(c: &mut Criterion) {
         "Must specify OSMPBF_BENCH_FILE env var when compiling this benchmark"
     );
 
-    // Note that both libz and libz-ng can be enabled at the same time.
-    // In this case libz will use the ng version internally.
-
-    #[cfg(feature = "system-libz")]
-    println!("Using ZlibDecoder...");
-    #[cfg(feature = "system-libz-ng")]
-    println!("Using ZstdDecoder with NG...");
-    #[cfg(not(any(feature = "system-libz", feature = "system-libz-ng")))]
-    println!("Using DeflateDecoder...");
+    #[cfg(feature = "rust-zlib")]
+    println!("Using rust-zlib (miniz_oxide)");
+    #[cfg(feature = "zlib")]
+    println!("Using zlib");
+    #[cfg(feature = "zlib-ng")]
+    println!("Using zlib-ng");
 
     c.bench_function(format!("Benchmarking using {file}").as_str(), |b| {
         b.iter(|| {

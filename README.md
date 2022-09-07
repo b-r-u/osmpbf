@@ -61,9 +61,9 @@ println!("Number of ways: {ways}");
 ```
 
 ## Build Features
-* `system-libz` (default) -- use `zlib` system library for decoding
-* `system-libz-ng` -- use `zlib-ng` library for better performance.
-* `default-features = false` -- use a slower Rust-based implementation.
+* `rust-zlib` (default) -- use the pure Rust zlib implementation`miniz_oxide`
+* `zlib` -- use the widely available `zlib` library
+* `zlib-ng` -- use the `zlib-ng` library for better performance.
 
 ## The PBF format
 

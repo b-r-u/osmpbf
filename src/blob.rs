@@ -9,11 +9,7 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 
-#[cfg(any(feature = "system-libz", feature = "system-libz-ng"))]
 use flate2::read::ZlibDecoder;
-
-#[cfg(not(any(feature = "system-libz", feature = "system-libz-ng")))]
-use inflate::DeflateDecoder;
 
 /// Maximum allowed [`BlobHeader`] size in bytes.
 pub static MAX_BLOB_HEADER_SIZE: u64 = 64 * 1024;
@@ -465,12 +461,7 @@ pub(crate) fn decode_blob<T: Message>(blob: &fileformat::Blob) -> Result<T> {
             Err(new_blob_error(BlobError::MessageTooBig { size }))
         }
     } else if blob.has_zlib_data() {
-        #[cfg(any(feature = "system-libz", feature = "system-libz-ng"))]
         let mut decoder = ZlibDecoder::new(blob.zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
-
-        #[cfg(not(any(feature = "system-libz", feature = "system-libz-ng")))]
-        let mut decoder = DeflateDecoder::from_zlib(blob.zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
-
         T::parse_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
     } else {
         Err(new_blob_error(BlobError::Empty))
