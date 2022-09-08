@@ -63,6 +63,16 @@ println!("Number of ways: {ways}");
 
 #![recursion_limit = "1024"]
 
+#[cfg(any(
+    all(feature = "rust-zlib", feature = "zlib"),
+    all(feature = "rust-zlib", feature = "zlib-ng"),
+    all(feature = "zlib", feature = "zlib-ng")
+))]
+std::compile_error!(
+    "Multiple zlib features are enabled. Make sure to only activate one zlib feature,\n\
+    for example by using these cargo flags: --no-default-features --features zlib-ng"
+);
+
 pub use blob::*;
 pub use block::*;
 pub use dense::*;
