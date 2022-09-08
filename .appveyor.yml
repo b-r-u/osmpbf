@@ -37,4 +37,3 @@ build: false
 test_script:
   - cargo test --verbose
   - cargo test --verbose --no-default-features --features zlib
-  - cargo test --verbose --no-default-features --features zlib-ng
