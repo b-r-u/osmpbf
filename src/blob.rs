@@ -315,7 +315,7 @@ impl<R: Read + Seek + Send> BlobReader<R> {
     /// # foo().unwrap();
     /// ```
     pub fn new_seekable(mut reader: R) -> Result<BlobReader<R>> {
-        let pos = reader.seek(SeekFrom::Current(0))?;
+        let pos = reader.stream_position()?;
 
         Ok(BlobReader {
             reader,
