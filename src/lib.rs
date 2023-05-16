@@ -73,15 +73,6 @@ std::compile_error!(
     for example by using these cargo flags: --no-default-features --features zlib-ng"
 );
 
-pub use blob::*;
-pub use block::*;
-pub use dense::*;
-pub use elements::*;
-pub use error::{BlobError, Error, ErrorKind, Result};
-pub use indexed::*;
-pub use mmap_blob::*;
-pub use reader::*;
-
 pub mod blob;
 pub mod block;
 pub mod dense;
