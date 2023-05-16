@@ -5,7 +5,7 @@ use crate::blob::{decode_blob, BlobDecode, BlobType, ByteOffset};
 use crate::block::{HeaderBlock, PrimitiveBlock};
 use crate::error::{new_blob_error, new_protobuf_error, BlobError, Result};
 use crate::proto::{fileformat, osmformat};
-use crate::MAX_BLOB_HEADER_SIZE;
+use crate::blob::MAX_BLOB_HEADER_SIZE;
 use byteorder::ByteOrder;
 use protobuf::Message;
 use std::fs::File;
