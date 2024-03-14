@@ -46,6 +46,34 @@ impl HeaderBlock {
             None
         }
     }
+
+    /// Returns the replication timestamp of the file, or `None` if unset.
+    /// The timestamp is expressed in seconds since the UNIX epoch.
+    pub fn osmosis_replication_timestamp(&self) -> Option<i64> {
+        if self.header.has_osmosis_replication_timestamp() {
+            Some(self.header.osmosis_replication_timestamp())
+        } else {
+            None
+        }
+    }
+
+    /// Returns the replication sequence number of the file, or `None` if unset.
+    pub fn osmosis_replication_sequence_number(&self) -> Option<i64> {
+        if self.header.has_osmosis_replication_sequence_number() {
+            Some(self.header.osmosis_replication_sequence_number())
+        } else {
+            None
+        }
+    }
+
+    /// Returns the replication base URL of the file, or `None` if unset.
+    pub fn osmosis_replication_base_url(&self) -> Option<&str> {
+        if self.header.has_osmosis_replication_base_url() {
+            Some(self.header.osmosis_replication_base_url())
+        } else {
+            None
+        }
+    }
 }
 
 /// A bounding box that is usually included in a [`HeaderBlock`].
