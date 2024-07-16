@@ -16,7 +16,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-osmpbf = "0.2"
+osmpbf = "0.3"
 ```
 
 Here's a simple example that counts all the ways in a file:
