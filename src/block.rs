@@ -47,6 +47,15 @@ impl HeaderBlock {
         }
     }
 
+    /// Returns the source of the `bbox` field or `None` if unset.
+    pub fn source(&self) -> Option<&str> {
+        if self.header.has_source() {
+            Some(self.header.source())
+        } else {
+            None
+        }
+    }
+
     /// Returns the replication timestamp of the file, or `None` if unset.
     /// The timestamp is expressed in seconds since the UNIX epoch.
     pub fn osmosis_replication_timestamp(&self) -> Option<i64> {
