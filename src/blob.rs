@@ -5,9 +5,17 @@ use crate::error::{new_blob_error, new_error, new_protobuf_error, BlobError, Err
 use crate::proto::fileformat;
 use byteorder::ReadBytesExt;
 use protobuf::Message;
+#[cfg(feature = "async")]
+use tokio::io::AsyncReadExt;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
+#[cfg(feature = "async")]
+use bytes::BytesMut;
+#[cfg(feature = "async")]
+use tokio_stream::Stream;
+#[cfg(feature = "async")]
+use async_stream::stream;
 
 use flate2::read::ZlibDecoder;
 
@@ -449,6 +457,163 @@ impl BlobReader<BufReader<File>> {
         let f = File::open(path.as_ref())?;
         let buf_reader = BufReader::new(f);
         Self::new_seekable(buf_reader)
+    }
+}
+
+#[derive(Debug)]
+#[cfg(feature = "async")]
+/// A reader for PBF files that allows streaming of [`Blob`]s.
+pub struct AsyncBlobReader {
+    reader: object_store::buffered::BufReader,
+    /// Current reader offset in bytes from the start of the stream.
+    offset: Option<ByteOffset>,
+    last_blob_ok: bool,
+}
+
+#[cfg(feature = "async")]
+impl AsyncBlobReader {
+    /// Creates a new `AsyncBlobReader`.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    /// use object_store::ObjectStore;
+    ///
+    /// # tokio_test::block_on(async {
+    /// 
+    /// // Setup object store
+    /// let store = object_store::local::LocalFileSystem::new();
+    /// let path = std::path::Path::new("tests/test.osm.pbf");
+    /// let filesystem_path = object_store::path::Path::from_filesystem_path(path).unwrap();
+    /// let object_meta = store.head(&filesystem_path).await.unwrap();
+    /// 
+    /// // Setup buf reader
+    /// let buf_reader = object_store::buffered::BufReader::new(std::sync::Arc::new(store), &object_meta);
+    /// let reader = AsyncBlobReader::new(buf_reader);
+    /// 
+    /// # })
+    /// ```
+    pub fn new(reader: object_store::buffered::BufReader) -> AsyncBlobReader {
+        AsyncBlobReader {
+            reader,
+            offset: None,
+            last_blob_ok: true,
+        }
+    }
+
+    async fn read_blob_header(&mut self) -> Option<Result<fileformat::BlobHeader>> {
+        let header_size: u64 = match self.reader.read_u32().await {
+            Ok(n) => {
+                self.offset = self.offset.map(|x| ByteOffset(x.0 + 4));
+                u64::from(n)
+            }
+            Err(e) => {
+                self.offset = None;
+                return match e.kind() {
+                    ::std::io::ErrorKind::UnexpectedEof => {
+                        None
+                    }
+                    _ => {
+                        self.last_blob_ok = false;
+                        Some(Err(new_blob_error(BlobError::InvalidHeaderSize)))
+                    }
+                };
+            }
+        };
+
+        if header_size >= MAX_BLOB_HEADER_SIZE {
+            self.last_blob_ok = false;
+            return Some(Err(new_blob_error(BlobError::HeaderTooBig {
+                size: header_size,
+            })));
+        }
+
+        let mut buffer = BytesMut::with_capacity(header_size as usize);
+        let _ = self.reader.read_buf(&mut buffer).await;
+        let bytes = buffer.freeze();
+        let header = match fileformat::BlobHeader::parse_from_tokio_bytes(&bytes) {
+            Ok(header) => header,
+            Err(e) => {
+                self.offset = None;
+                self.last_blob_ok = false;
+                return Some(Err(new_protobuf_error(e, "blob header")));
+            }
+        };
+
+        self.offset = self.offset.map(|x| ByteOffset(x.0 + header_size));
+
+        Some(Ok(header))
+    }
+
+    async fn read_blob(&mut self) -> Option<Result<Blob>> {
+        let prev_offset = self.offset;
+
+        let header = match self.read_blob_header().await {
+            Some(Ok(header)) => header,
+            Some(Err(err)) => return Some(Err(err)),
+            None => return None,
+        };
+
+        let mut buffer = BytesMut::with_capacity(header.datasize() as usize);
+        let _ = self.reader.read_buf(&mut buffer).await.unwrap();
+        let bytes = buffer.freeze();
+        let blob = match fileformat::Blob::parse_from_tokio_bytes(&bytes) {
+            Ok(blob) => blob,
+            Err(e) => {
+                self.offset = None;
+                self.last_blob_ok = false;
+                return Some(Err(new_protobuf_error(e, "blob content")));
+            }
+        };
+
+        self.offset = self
+            .offset
+            .map(|x| ByteOffset(x.0 + header.datasize() as u64));
+
+        Some(Ok(Blob::new(header, blob, prev_offset)))
+    }
+
+    /// Creates a new stream of blobs.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    /// use object_store::ObjectStore;
+    /// use futures_util::StreamExt;
+    /// 
+    /// # tokio_test::block_on(async {
+    /// 
+    /// // Setup AsyncBlobReader
+    /// let store = object_store::local::LocalFileSystem::new();
+    /// let path = std::path::Path::new("tests/test.osm.pbf");
+    /// let filesystem_path = object_store::path::Path::from_filesystem_path(path).unwrap();
+    /// let object_meta = store.head(&filesystem_path).await.unwrap();
+    /// let buf_reader = object_store::buffered::BufReader::new(std::sync::Arc::new(store), &object_meta);
+    /// let mut reader = AsyncBlobReader::new(buf_reader);
+    /// 
+    /// // Create and pin stream to allow iteration
+    /// let stream = reader.stream();
+    /// futures_util::pin_mut!(stream);
+    /// 
+    /// // Process stream of blobs
+    /// while let Some(Ok(blob)) = stream.next().await {
+    ///   // Decode and iterate over elements asynchronously
+    /// }
+    /// 
+    /// # })
+    /// ```
+    pub fn stream(&mut self) -> impl Stream<Item = Result<Blob>> + '_ {
+        stream! {
+            loop {
+                let blob_option = self.read_blob().await;
+                match blob_option {
+                    Some(blob_result) => {
+                        yield blob_result;
+                    },
+                    None => break
+                }
+            }
+        }
     }
 }
 
