@@ -6,8 +6,6 @@ use crate::proto::fileformat;
 #[cfg(feature = "async")]
 use async_stream::stream;
 use byteorder::ReadBytesExt;
-#[cfg(feature = "async")]
-use bytes::BytesMut;
 use protobuf::Message;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -526,10 +524,20 @@ impl AsyncBlobReader {
             })));
         }
 
-        let mut buffer = BytesMut::with_capacity(header_size as usize);
-        let _ = self.reader.read_buf(&mut buffer).await;
-        let bytes = buffer.freeze();
-        let header = match fileformat::BlobHeader::parse_from_tokio_bytes(&bytes) {
+        let mut buffer = vec![0; header_size as usize];
+        let read_result = self.reader.read_exact(&mut buffer).await;
+        match read_result {
+            Ok(read_byte_count) => {
+                if read_byte_count != header_size as usize {
+                    return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
+                }
+            },
+            Err(e) => {
+                return Some(Err(e.into()));
+            }
+        }
+
+        let header = match fileformat::BlobHeader::parse_from_bytes(&buffer) {
             Ok(header) => header,
             Err(e) => {
                 self.offset = None;
@@ -552,10 +560,20 @@ impl AsyncBlobReader {
             None => return None,
         };
 
-        let mut buffer = BytesMut::with_capacity(header.datasize() as usize);
-        let _ = self.reader.read_buf(&mut buffer).await.unwrap();
-        let bytes = buffer.freeze();
-        let blob = match fileformat::Blob::parse_from_tokio_bytes(&bytes) {
+        let mut buffer = vec![0; header.datasize() as usize];
+        let read_result = self.reader.read_exact(&mut buffer).await;
+        match read_result {
+            Ok(read_byte_count) => {
+                if read_byte_count != header.datasize() as usize {
+                    return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
+                }
+            },
+            Err(e) => {
+                return Some(Err(e.into()));
+            }
+        }
+
+        let blob = match fileformat::Blob::parse_from_bytes(&buffer) {
             Ok(blob) => blob,
             Err(e) => {
                 self.offset = None;
@@ -603,12 +621,17 @@ impl AsyncBlobReader {
     pub fn stream(&mut self) -> impl Stream<Item = Result<Blob>> + '_ {
         stream! {
             loop {
-                let blob_option = self.read_blob().await;
-                match blob_option {
-                    Some(blob_result) => {
-                        yield blob_result;
+                match self.read_blob().await {
+                    Some(Ok(blob_result)) => {
+                        yield Ok(blob_result);
                     },
-                    None => break
+                    Some(Err(error)) => {
+                        yield Err(error);
+                        break;
+                    }
+                    None => {
+                        break;
+                    }
                 }
             }
         }

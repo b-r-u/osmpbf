@@ -12,7 +12,7 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [features]
-async = ["async-stream", "bytes", "object_store", "protobuf/with-bytes", "tokio", "tokio/io-util", "tokio-stream"]
+async = ["async-stream", "object_store", "tokio", "tokio/io-util", "tokio-stream"]
 default = ["rust-zlib"]
 rust-zlib = ["flate2/rust_backend"]
 zlib = ["flate2/zlib"]
@@ -21,7 +21,6 @@ zlib-ng = ["flate2/zlib-ng"]
 [dependencies]
 async-stream = { version = "0.3.5", optional = true }
 byteorder = "1.4"
-bytes = { version = "1.7.1", optional = true }
 flate2 = { version = "1.0", default-features = false }
 memmap2 = "0.5"
 object_store = { version = "0.10.2", optional = true }
