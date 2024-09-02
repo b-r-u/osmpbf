@@ -531,7 +531,7 @@ impl AsyncBlobReader {
                 if read_byte_count != header_size as usize {
                     return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
                 }
-            },
+            }
             Err(e) => {
                 return Some(Err(e.into()));
             }
@@ -567,7 +567,7 @@ impl AsyncBlobReader {
                 if read_byte_count != header.datasize() as usize {
                     return Some(Err(new_blob_error(BlobError::InvalidHeaderSize)));
                 }
-            },
+            }
             Err(e) => {
                 return Some(Err(e.into()));
             }
