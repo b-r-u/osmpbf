@@ -31,10 +31,12 @@ jobs:
         run: cargo test --verbose --no-default-features --features zlib
       - name: Run tests (with zlib-ng)
         run: cargo test --verbose --no-default-features --features zlib-ng
+      - name: Run tests (with async)
+        run: cargo test --verbose --no-default-features --features async
       - name: Lint
         run: cargo clippy -- -Dwarnings
       - name: Build documentation
-        run: cargo doc --verbose
+        run: cargo doc --verbose --features async
 
   TestMatrix:
     env:

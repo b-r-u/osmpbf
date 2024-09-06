@@ -478,7 +478,6 @@ impl AsyncBlobReader {
     /// use object_store::ObjectStore;
     ///
     /// # tokio_test::block_on(async {
-    ///
     /// // Setup object store
     /// let store = object_store::local::LocalFileSystem::new();
     /// let path = std::path::Path::new("tests/test.osm.pbf");
@@ -488,7 +487,6 @@ impl AsyncBlobReader {
     /// // Setup buf reader
     /// let buf_reader = object_store::buffered::BufReader::new(std::sync::Arc::new(store), &object_meta);
     /// let reader = AsyncBlobReader::new(buf_reader);
-    ///
     /// # })
     /// ```
     pub fn new(reader: object_store::buffered::BufReader) -> AsyncBlobReader {
@@ -598,7 +596,6 @@ impl AsyncBlobReader {
     /// use futures_util::StreamExt;
     ///
     /// # tokio_test::block_on(async {
-    ///
     /// // Setup AsyncBlobReader
     /// let store = object_store::local::LocalFileSystem::new();
     /// let path = std::path::Path::new("tests/test.osm.pbf");
@@ -615,7 +612,6 @@ impl AsyncBlobReader {
     /// while let Some(Ok(blob)) = stream.next().await {
     ///   // Decode and iterate over elements asynchronously
     /// }
-    ///
     /// # })
     /// ```
     pub fn stream(&mut self) -> impl Stream<Item = Result<Blob>> + '_ {
