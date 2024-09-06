@@ -32,7 +32,7 @@ jobs:
       - name: Run tests (with zlib-ng)
         run: cargo test --verbose --no-default-features --features zlib-ng
       - name: Run tests (with async)
-        run: cargo test --verbose --no-default-features --features async
+        run: cargo test --verbose --features async
       - name: Lint
         run: cargo clippy -- -Dwarnings
       - name: Build documentation
