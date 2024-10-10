@@ -26,6 +26,30 @@ pub enum Element<'a> {
     Relation(Relation<'a>),
 }
 
+impl<'a> From<Node<'a>> for Element<'a> {
+    fn from(n: Node<'a>) -> Self {
+        Element::Node(n)
+    }
+}
+
+impl<'a> From<DenseNode<'a>> for Element<'a> {
+    fn from(n: DenseNode<'a>) -> Self {
+        Element::DenseNode(n)
+    }
+}
+
+impl<'a> From<Way<'a>> for Element<'a> {
+    fn from(w: Way<'a>) -> Self {
+        Element::Way(w)
+    }
+}
+
+impl<'a> From<Relation<'a>> for Element<'a> {
+    fn from(r: Relation<'a>) -> Self {
+        Element::Relation(r)
+    }
+}
+
 /// An OpenStreetMap node element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
 #[derive(Clone, Debug)]
 pub struct Node<'a> {

@@ -118,21 +118,6 @@ impl<'a> DenseNodeIter<'a> {
             info_iter,
         }
     }
-
-    pub(crate) fn empty(block: &'a osmformat::PrimitiveBlock) -> DenseNodeIter<'a> {
-        DenseNodeIter {
-            block,
-            dids: [].iter(),
-            cid: 0,
-            dlats: [].iter(),
-            clat: 0,
-            dlons: [].iter(),
-            clon: 0,
-            keys_vals_slice: &[],
-            keys_vals_index: 0,
-            info_iter: None,
-        }
-    }
 }
 
 impl<'a> Iterator for DenseNodeIter<'a> {
