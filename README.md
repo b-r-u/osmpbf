@@ -99,8 +99,7 @@ parser features.
 A `PrimitiveBlock` contains an array of `PrimitiveGroup`s. Each `PrimitiveGroup`
 only contains one element type: `Node`, `Way`, `Relation` or `DenseNodes`. A
 `DenseNodes` item is an alternative and space-saving representation of a `Node`
-array. So, do not forget to check for `DenseNodes` when aggregating all nodes in
-a file.
+array, but this library will handle differences for you.
 
 Elements reference each other using integer IDs. Corresponding elements could be
 stored in any blob, so finding them can involve iterating over the whole file.
