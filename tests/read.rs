@@ -49,7 +49,6 @@ static LOC_ON_WAYS_FILE_PATH: TestFile = TestFile {
 // Helper functions to simplify testing
 trait Getter {
     fn t_nodes(&self) -> Vec<Node>;
-    fn t_dense_nodes(&self) -> Vec<DenseNode>;
     fn t_ways(&self) -> Vec<Way>;
     fn t_relations(&self) -> Vec<Relation>;
 }
@@ -57,10 +56,6 @@ trait Getter {
 impl Getter for PrimitiveBlock {
     fn t_nodes(&self) -> Vec<Node> {
         self.groups().flat_map(|g| g.nodes()).collect()
-    }
-
-    fn t_dense_nodes(&self) -> Vec<DenseNode> {
-        self.groups().flat_map(|g| g.dense_nodes()).collect()
     }
 
     fn t_ways(&self) -> Vec<Way> {
@@ -136,41 +131,6 @@ fn check_primitive_block_content(block: &PrimitiveBlock) {
         assert!(nodes[0].info().visible());
         assert!(nodes[1].info().visible());
         assert!(nodes[2].info().visible());
-    }
-
-    let dense_nodes = block.t_dense_nodes();
-    if !dense_nodes.is_empty() {
-        assert_eq!(dense_nodes.len(), 3);
-
-        // node 1 lat
-        assert!(approx_eq(dense_nodes[1].lat(), 52.11992359584));
-        assert_eq!(dense_nodes[1].nano_lat(), 52119923500);
-        assert_eq!(dense_nodes[1].decimicro_lat(), 521199235);
-        //node 1 lon
-        assert!(approx_eq(dense_nodes[1].lon(), 11.62564468943));
-        assert_eq!(dense_nodes[1].nano_lon(), 11625644600);
-        assert_eq!(dense_nodes[1].decimicro_lon(), 116256446);
-
-        //node 2 lat
-        assert!(approx_eq(dense_nodes[2].lat(), 52.11989910567));
-        assert_eq!(dense_nodes[2].nano_lat(), 52119899100);
-        assert_eq!(dense_nodes[2].decimicro_lat(), 521198991);
-        // node 2 lon
-        assert!(approx_eq(dense_nodes[2].lon(), 11.63101926915));
-        assert_eq!(dense_nodes[2].nano_lon(), 11631019200);
-        assert_eq!(dense_nodes[2].decimicro_lon(), 116310192);
-
-        assert_eq!(dense_nodes[0].id, 105);
-        assert_eq!(dense_nodes[1].id, 106);
-        assert_eq!(dense_nodes[2].id, 108);
-
-        assert_eq!(dense_nodes[0].info().map(|x| x.uid()), Some(17));
-        assert_eq!(dense_nodes[1].info().map(|x| x.uid()), Some(17));
-        assert_eq!(dense_nodes[2].info().map(|x| x.uid()), Some(17));
-
-        assert_eq!(dense_nodes[0].info().map(|x| x.visible()), Some(true));
-        assert_eq!(dense_nodes[1].info().map(|x| x.visible()), Some(true));
-        assert_eq!(dense_nodes[2].info().map(|x| x.visible()), Some(true));
     }
 
     {
@@ -306,7 +266,6 @@ fn read_ways_and_deps() {
                     match element {
                         Element::Way(_) => ways += 1,
                         Element::Node(_) => nodes += 1,
-                        Element::DenseNode(_) => nodes += 1,
                         Element::Relation(_) => panic!(), // should not occur
                     }
                 },
@@ -331,12 +290,12 @@ fn read_history_file() {
     check_header_block_content(&header, &HISTORY_FILE_PATH);
 
     let primitive_block = blobs[1].to_primitiveblock().unwrap();
-    let nodes = primitive_block.t_dense_nodes();
+    let nodes = primitive_block.t_nodes();
 
     assert_eq!(nodes.len(), 2);
 
-    assert!(!nodes[0].info().unwrap().visible());
-    assert!(nodes[1].info().unwrap().visible());
+    assert!(!nodes[0].info().visible());
+    assert!(nodes[1].info().visible());
 }
 
 #[test]
@@ -354,7 +313,6 @@ fn read_loc_on_ways_file() {
 
     {
         let primitive_block = blobs[1].to_primitiveblock().unwrap();
-        assert_eq!(primitive_block.t_dense_nodes().len(), 0);
         assert_eq!(primitive_block.t_relations().len(), 0);
         let ways = primitive_block.t_ways();
         assert_eq!(ways.len(), 1);
@@ -404,7 +362,6 @@ fn read_loc_on_ways_file() {
 
     {
         let primitive_block = blobs[2].to_primitiveblock().unwrap();
-        assert_eq!(primitive_block.t_dense_nodes().len(), 0);
         assert_eq!(primitive_block.t_ways().len(), 0);
 
         let relations = primitive_block.t_relations();

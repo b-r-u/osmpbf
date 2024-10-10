@@ -1,40 +1,25 @@
 //! Nodes, ways and relations
 
 use crate::block::{get_stringtable_key_value, str_from_stringtable};
-use crate::dense::DenseNode;
+use crate::dense::DenseRawNode;
 use crate::error::Result;
 use crate::proto::osmformat;
 use crate::proto::osmformat::PrimitiveBlock;
+use crate::DenseRawTagIter;
 use osmformat::relation::MemberType;
 use protobuf::EnumOrUnknown;
 
 /// An enum with the OSM core elements: nodes, ways and relations.
 #[derive(Clone, Debug)]
 pub enum Element<'a> {
-    /// A node. Also, see [`DenseNode`](Self::DenseNode).
     Node(Node<'a>),
-
-    /// Just like [`Node`](Self::Node), but with a different representation in memory. This distinction is
-    /// usually not important but is not abstracted away to avoid copying. So, if you want to match
-    /// `Node`, you also likely want to match [`DenseNode`].
-    DenseNode(DenseNode<'a>),
-
-    /// A way.
     Way(Way<'a>),
-
-    /// A relation.
     Relation(Relation<'a>),
 }
 
 impl<'a> From<Node<'a>> for Element<'a> {
     fn from(n: Node<'a>) -> Self {
         Element::Node(n)
-    }
-}
-
-impl<'a> From<DenseNode<'a>> for Element<'a> {
-    fn from(n: DenseNode<'a>) -> Self {
-        Element::DenseNode(n)
     }
 }
 
@@ -49,16 +34,103 @@ impl<'a> From<Relation<'a>> for Element<'a> {
         Element::Relation(r)
     }
 }
+/// A trait used to represent the raw data stored in either an osmformat::Node
+/// or an osmformat::DenseNode.
+pub(crate) trait RawNodeData<'a> {
+    fn id(&self) -> i64;
+    fn lat(&self) -> i64;
+    fn lon(&self) -> i64;
+    fn raw_tags(&self) -> MaybeDenseRawTagIter<'a>;
+    fn info(&'a self) -> &'a osmformat::Info;
+}
+
+impl<'a> RawNodeData<'a> for &'a osmformat::Node {
+    fn id(&self) -> i64 {
+        (*self).id()
+    }
+    fn lat(&self) -> i64 {
+        (*self).lat()
+    }
+    fn lon(&self) -> i64 {
+        (*self).lon()
+    }
+    fn raw_tags(&self) -> MaybeDenseRawTagIter<'a> {
+        RawTagIter {
+            key_indices: self.keys.iter(),
+            val_indices: self.vals.iter(),
+        }
+        .into()
+    }
+    fn info(&self) -> &osmformat::Info {
+        self.info.get_or_default()
+    }
+}
+
+/// An enum representing the raw values for a Node that could be represented
+/// as either an osmformat::Node or an osmformat::DenseNode
+#[derive(Clone, Debug)]
+
+pub(crate) enum MaybeDenseRawNode<'a> {
+    RawNode(&'a osmformat::Node),
+    DenseRawNode(DenseRawNode<'a>),
+}
+
+impl<'a> From<&'a osmformat::Node> for MaybeDenseRawNode<'a> {
+    fn from(n: &'a osmformat::Node) -> Self {
+        MaybeDenseRawNode::RawNode(n)
+    }
+}
+
+impl<'a> From<DenseRawNode<'a>> for MaybeDenseRawNode<'a> {
+    fn from(d: DenseRawNode<'a>) -> Self {
+        MaybeDenseRawNode::DenseRawNode(d)
+    }
+}
+
+// We implement RawNodeData for MaybeDenseRawNode by forwarding each method
+// to the corresponding method for the underlying type
+impl<'a> RawNodeData<'a> for MaybeDenseRawNode<'a> {
+    fn id(&self) -> i64 {
+        match self {
+            MaybeDenseRawNode::RawNode(n) => n.id(),
+            MaybeDenseRawNode::DenseRawNode(d) => d.id(),
+        }
+    }
+    fn lat(&self) -> i64 {
+        match self {
+            MaybeDenseRawNode::RawNode(n) => n.lat(),
+            MaybeDenseRawNode::DenseRawNode(d) => d.lat(),
+        }
+    }
+    fn lon(&self) -> i64 {
+        match self {
+            MaybeDenseRawNode::RawNode(n) => n.lon(),
+            MaybeDenseRawNode::DenseRawNode(d) => d.lon(),
+        }
+    }
+    fn raw_tags(&self) -> MaybeDenseRawTagIter<'a> {
+        match self {
+            MaybeDenseRawNode::RawNode(n) => n.raw_tags(),
+            MaybeDenseRawNode::DenseRawNode(d) => d.raw_tags(),
+        }
+    }
+    fn info(&'a self) -> &'a osmformat::Info {
+        match self {
+            MaybeDenseRawNode::RawNode(n) => n.info(),
+            MaybeDenseRawNode::DenseRawNode(d) => d.info(),
+        }
+    }
+}
 
 /// An OpenStreetMap node element (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
 #[derive(Clone, Debug)]
 pub struct Node<'a> {
     block: &'a PrimitiveBlock,
-    osmnode: &'a osmformat::Node,
+    osmnode: MaybeDenseRawNode<'a>,
 }
 
 impl<'a> Node<'a> {
-    pub(crate) fn new(block: &'a PrimitiveBlock, osmnode: &'a osmformat::Node) -> Node<'a> {
+    pub(crate) fn new(block: &'a PrimitiveBlock, osmnode: MaybeDenseRawNode<'a>) -> Node<'a> {
         Node { block, osmnode }
     }
 
@@ -94,14 +166,13 @@ impl<'a> Node<'a> {
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
-            key_indices: self.osmnode.keys.iter(),
-            val_indices: self.osmnode.vals.iter(),
+            raw_tags: self.osmnode.raw_tags(),
         }
     }
 
     /// Returns additional metadata for this element.
-    pub fn info(&self) -> Info<'a> {
-        Info::new(self.block, self.osmnode.info.get_or_default())
+    pub fn info<'b>(&'b self) -> Info<'b> {
+        Info::new(self.block, self.osmnode.info())
     }
 
     /// Returns the latitude coordinate in degrees.
@@ -138,11 +209,8 @@ impl<'a> Node<'a> {
     /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
     /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
     /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
-    pub fn raw_tags(&self) -> RawTagIter<'a> {
-        RawTagIter {
-            key_indices: self.osmnode.keys.iter(),
-            val_indices: self.osmnode.vals.iter(),
-        }
+    pub fn raw_tags(&self) -> MaybeDenseRawTagIter {
+        self.osmnode.raw_tags()
     }
 
     /// Returns the raw stringtable. Elements in a `PrimitiveBlock` do not store strings
@@ -200,8 +268,7 @@ impl<'a> Way<'a> {
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
-            key_indices: self.osmway.keys.iter(),
-            val_indices: self.osmway.vals.iter(),
+            raw_tags: self.raw_tags().into(),
         }
     }
 
@@ -309,8 +376,7 @@ impl<'a> Relation<'a> {
     pub fn tags(&self) -> TagIter<'a> {
         TagIter {
             block: self.block,
-            key_indices: self.osmrel.keys.iter(),
-            val_indices: self.osmrel.vals.iter(),
+            raw_tags: self.raw_tags().into(),
         }
     }
 
@@ -538,8 +604,7 @@ impl<'a> ExactSizeIterator for RelMemberIter<'a> {}
 #[derive(Clone, Debug)]
 pub struct TagIter<'a> {
     block: &'a PrimitiveBlock,
-    key_indices: std::slice::Iter<'a, u32>,
-    val_indices: std::slice::Iter<'a, u32>,
+    raw_tags: MaybeDenseRawTagIter<'a>,
 }
 
 //TODO return Result?
@@ -547,22 +612,25 @@ impl<'a> Iterator for TagIter<'a> {
     type Item = (&'a str, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
-        get_stringtable_key_value(
-            self.block,
-            self.key_indices.next().map(|v| *v as usize),
-            self.val_indices.next().map(|v| *v as usize),
-        )
+        match self.raw_tags.next() {
+            Some((key, value)) => {
+                get_stringtable_key_value(self.block, key as usize, value as usize)
+            }
+            None => None,
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.key_indices.size_hint()
+        self.raw_tags.size_hint()
     }
 }
 
 impl<'a> ExactSizeIterator for TagIter<'a> {}
 
-/// An iterator over the tags of an element. It returns a pair of indices (key and value) to the
-/// stringtable of the current [`PrimitiveBlock`](crate::block::PrimitiveBlock).
+/// An iterator over the tags of an element (excluding DenseNodes which store
+/// the data in a different format). It returns a pair of indices (key and
+/// value) to the stringtable of the current
+/// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
 #[derive(Clone, Debug)]
 pub struct RawTagIter<'a> {
     key_indices: std::slice::Iter<'a, u32>,
@@ -587,6 +655,40 @@ impl<'a> Iterator for RawTagIter<'a> {
 
 impl<'a> ExactSizeIterator for RawTagIter<'a> {}
 
+/// An iterator over the tags of an element that could be a regular Node, Way
+/// or Relation, or a DenseNode which stores the tags in a different format.
+#[derive(Clone, Debug)]
+pub enum MaybeDenseRawTagIter<'a> {
+    NotDense(RawTagIter<'a>),
+    Dense(DenseRawTagIter<'a>),
+}
+
+impl<'a> Iterator for MaybeDenseRawTagIter<'a> {
+    type Item = (u32, u32);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            MaybeDenseRawTagIter::NotDense(iter) => iter.next(),
+            MaybeDenseRawTagIter::Dense(iter) => iter.next(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            MaybeDenseRawTagIter::NotDense(iter) => iter.size_hint(),
+            MaybeDenseRawTagIter::Dense(iter) => iter.size_hint(),
+        }
+    }
+}
+
+impl<'a> ExactSizeIterator for MaybeDenseRawTagIter<'a> {}
+
+impl<'a> From<RawTagIter<'a>> for MaybeDenseRawTagIter<'a> {
+    fn from(iter: RawTagIter<'a>) -> Self {
+        MaybeDenseRawTagIter::NotDense(iter)
+    }
+}
+
 /// Additional metadata that might be included in each element.
 #[derive(Clone, Debug)]
 pub struct Info<'a> {
@@ -595,7 +697,7 @@ pub struct Info<'a> {
 }
 
 impl<'a> Info<'a> {
-    fn new(block: &'a PrimitiveBlock, info: &'a osmformat::Info) -> Info<'a> {
+    pub(crate) fn new(block: &'a PrimitiveBlock, info: &'a osmformat::Info) -> Info<'a> {
         Info { block, info }
     }
 

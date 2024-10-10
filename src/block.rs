@@ -1,6 +1,6 @@
 //! `HeaderBlock`, `PrimitiveBlock` and `PrimitiveGroup`s
 
-use crate::dense::DenseNodeIter;
+use crate::dense::DenseRawNodeIter;
 use crate::elements::{Element, Node, Relation, Way};
 use crate::error::{new_error, ErrorKind, Result};
 use crate::proto::osmformat;
@@ -161,10 +161,10 @@ impl<'a> PrimitiveGroup<'a> {
             .nodes
             .iter()
             .map(|n| Node::new(self.block, n.into()))
-    }
-
-    pub fn dense_nodes(&self) -> DenseNodeIter<'a> {
-        DenseNodeIter::new(self.block, self.group.dense.get_or_default())
+            .chain(
+                DenseRawNodeIter::new(self.group.dense.get_or_default())
+                    .map(|d| Node::new(self.block, d.into())),
+            )
     }
 
     /// Returns an iterator over the ways in this group.
@@ -183,7 +183,6 @@ impl<'a> PrimitiveGroup<'a> {
     pub fn elements(&self) -> impl Iterator<Item = Element<'a>> {
         self.nodes()
             .map(Element::from)
-            .chain(self.dense_nodes().map(Element::from))
             .chain(self.ways().map(Element::from))
             .chain(self.relations().map(Element::from))
     }
@@ -204,19 +203,14 @@ pub(crate) fn str_from_stringtable(
 /// Construct a key-value tuple from key/value indexes, using the stringtable from a block.
 pub(crate) fn get_stringtable_key_value(
     block: &osmformat::PrimitiveBlock,
-    key_index: Option<usize>,
-    value_index: Option<usize>,
+    key_index: usize,
+    val_index: usize,
 ) -> Option<(&str, &str)> {
-    match (key_index, value_index) {
-        (Some(key_index), Some(val_index)) => {
-            let k_res = str_from_stringtable(block, key_index);
-            let v_res = str_from_stringtable(block, val_index);
-            if let (Ok(k), Ok(v)) = (k_res, v_res) {
-                Some((k, v))
-            } else {
-                None
-            }
-        }
-        _ => None,
+    let k_res = str_from_stringtable(block, key_index);
+    let v_res = str_from_stringtable(block, val_index);
+    if let (Ok(k), Ok(v)) = (k_res, v_res) {
+        Some((k, v))
+    } else {
+        None
     }
 }

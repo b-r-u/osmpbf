@@ -1,90 +1,45 @@
 //! Iterate over the dense nodes in a `PrimitiveGroup`
 
-use crate::block::{get_stringtable_key_value, str_from_stringtable};
-use crate::error::Result;
+use crate::elements::{MaybeDenseRawTagIter, RawNodeData};
 use crate::proto::osmformat;
 use std;
 
 //TODO Add getter functions for id, version, uid, ...
 /// An OpenStreetMap node element from a compressed array of dense nodes (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Node)).
 #[derive(Clone, Debug)]
-pub struct DenseNode<'a> {
-    block: &'a osmformat::PrimitiveBlock,
-
+pub struct DenseRawNode<'a> {
     /// The node id. It should be unique between nodes and might be negative to indicate
     /// that the element has not yet been uploaded to a server.
     pub id: i64,
     lat: i64,
     lon: i64,
     keys_vals_indices: &'a [i32],
-    info: Option<DenseNodeInfo<'a>>,
+    info: osmformat::Info,
 }
 
-impl<'a> DenseNode<'a> {
-    /// Returns the node id. It should be unique between nodes and might be negative to indicate
-    /// that the element has not yet been uploaded to a server.
-    pub fn id(&self) -> i64 {
+impl<'a> RawNodeData<'a> for DenseRawNode<'a> {
+    fn id(&self) -> i64 {
         self.id
     }
-
-    /// return optional metadata about the node
-    pub fn info(&'a self) -> Option<&'a DenseNodeInfo<'a>> {
-        self.info.as_ref()
+    fn lat(&self) -> i64 {
+        self.lat
     }
-
-    /// Returns the latitude coordinate in degrees.
-    pub fn lat(&self) -> f64 {
-        1e-9 * self.nano_lat() as f64
+    fn lon(&self) -> i64 {
+        self.lon
     }
-
-    /// Returns the latitude coordinate in nanodegrees (10⁻⁹).
-    pub fn nano_lat(&self) -> i64 {
-        self.block.lat_offset() + i64::from(self.block.granularity()) * self.lat
-    }
-
-    /// Returns the latitude coordinate in decimicrodegrees (10⁻⁷).
-    pub fn decimicro_lat(&self) -> i32 {
-        (self.nano_lat() / 100) as i32
-    }
-
-    /// Returns the longitude coordinate in degrees.
-    pub fn lon(&self) -> f64 {
-        1e-9 * self.nano_lon() as f64
-    }
-
-    /// Returns the longitude in nanodegrees (10⁻⁹).
-    pub fn nano_lon(&self) -> i64 {
-        self.block.lon_offset() + i64::from(self.block.granularity()) * self.lon
-    }
-
-    /// Returns the longitude coordinate in decimicrodegrees (10⁻⁷).
-    pub fn decimicro_lon(&self) -> i32 {
-        (self.nano_lon() / 100) as i32
-    }
-
-    /// Returns an iterator over the tags of this node (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
-    pub fn tags(&self) -> DenseTagIter<'a> {
-        DenseTagIter {
-            block: self.block,
+    fn raw_tags(&self) -> MaybeDenseRawTagIter<'a> {
+        MaybeDenseRawTagIter::Dense(DenseRawTagIter {
             keys_vals_indices: self.keys_vals_indices.iter(),
-        }
+        })
     }
-
-    /// Returns an iterator over the tags of this node
-    /// (See [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags)).
-    /// A tag is represented as a pair of indices (key and value) to the stringtable of the current
-    /// [`PrimitiveBlock`](crate::block::PrimitiveBlock).
-    pub fn raw_tags(&self) -> DenseRawTagIter<'a> {
-        DenseRawTagIter {
-            keys_vals_indices: self.keys_vals_indices.iter(),
-        }
+    fn info(&'a self) -> &'a osmformat::Info {
+        &self.info
     }
 }
 
 /// An iterator over dense nodes. It decodes the delta encoded values.
 #[derive(Clone, Debug)]
-pub struct DenseNodeIter<'a> {
-    block: &'a osmformat::PrimitiveBlock,
+pub struct DenseRawNodeIter<'a> {
     dids: std::slice::Iter<'a, i64>,  // deltas
     cid: i64,                         // current id
     dlats: std::slice::Iter<'a, i64>, // deltas
@@ -96,17 +51,10 @@ pub struct DenseNodeIter<'a> {
     info_iter: Option<DenseNodeInfoIter<'a>>,
 }
 
-impl<'a> DenseNodeIter<'a> {
-    pub(crate) fn new(
-        block: &'a osmformat::PrimitiveBlock,
-        osmdense: &'a osmformat::DenseNodes,
-    ) -> DenseNodeIter<'a> {
-        let info_iter = Some(DenseNodeInfoIter::new(
-            block,
-            osmdense.denseinfo.get_or_default(),
-        ));
-        DenseNodeIter {
-            block,
+impl<'a> DenseRawNodeIter<'a> {
+    pub(crate) fn new(osmdense: &'a osmformat::DenseNodes) -> DenseRawNodeIter<'a> {
+        let info_iter = Some(DenseNodeInfoIter::new(osmdense.denseinfo.get_or_default()));
+        DenseRawNodeIter {
             dids: osmdense.id.iter(),
             cid: 0,
             dlats: osmdense.lat.iter(),
@@ -120,8 +68,8 @@ impl<'a> DenseNodeIter<'a> {
     }
 }
 
-impl<'a> Iterator for DenseNodeIter<'a> {
-    type Item = DenseNode<'a>;
+impl<'a> Iterator for DenseRawNodeIter<'a> {
+    type Item = DenseRawNode<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match (
@@ -147,13 +95,12 @@ impl<'a> Iterator for DenseNodeIter<'a> {
                     }
                 }
 
-                Some(DenseNode {
-                    block: self.block,
+                Some(DenseRawNode {
                     id: self.cid,
                     lat: self.clat,
                     lon: self.clon,
                     keys_vals_indices: &self.keys_vals_slice[start_index..end_index],
-                    info,
+                    info: info.unwrap_or_default(),
                 })
             }
             _ => None,
@@ -165,69 +112,11 @@ impl<'a> Iterator for DenseNodeIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for DenseNodeIter<'a> {}
-
-/// Optional metadata with non-geographic information about a dense node
-#[derive(Clone, Debug)]
-pub struct DenseNodeInfo<'a> {
-    block: &'a osmformat::PrimitiveBlock,
-    /// The version of this element.
-    version: i32,
-    /// Timestamp
-    timestamp: i64,
-    /// The changeset id.
-    changeset: i64,
-    /// The user id.
-    uid: i32,
-    /// String IDs for usernames.
-    user_sid: i32,
-    /// Is the element visible (true) or was it deleted (false).
-    visible: bool,
-}
-
-impl<'a> DenseNodeInfo<'a> {
-    /// Returns the version of this element.
-    pub fn version(&self) -> i32 {
-        self.version
-    }
-
-    /// Returns the changeset id.
-    pub fn changeset(&self) -> i64 {
-        self.changeset
-    }
-
-    /// Returns the user id.
-    pub fn uid(&self) -> i32 {
-        self.uid
-    }
-
-    /// Returns the user name.
-    pub fn user(&self) -> Result<&'a str> {
-        str_from_stringtable(self.block, self.user_sid as usize)
-    }
-
-    /// Returns the time stamp in milliseconds since the epoch.
-    pub fn milli_timestamp(&self) -> i64 {
-        self.timestamp * i64::from(self.block.date_granularity())
-    }
-
-    /// Returns the visibility status of an element. This is only relevant if the PBF file contains
-    /// historical information.
-    pub fn visible(&self) -> bool {
-        self.visible
-    }
-
-    /// Returns true if the element was deleted.
-    /// This is a convenience function that just returns the inverse of `DenseNodeInfo::visible`.
-    pub fn deleted(&self) -> bool {
-        !self.visible
-    }
-}
+impl<'a> ExactSizeIterator for DenseRawNodeIter<'a> {}
 
 /// An iterator over dense nodes info. It decodes the delta encoded values.
 #[derive(Clone, Debug)]
 pub struct DenseNodeInfoIter<'a> {
-    block: &'a osmformat::PrimitiveBlock,
     versions: std::slice::Iter<'a, i32>,
     dtimestamps: std::slice::Iter<'a, i64>, // deltas
     ctimestamp: i64,
@@ -241,12 +130,8 @@ pub struct DenseNodeInfoIter<'a> {
 }
 
 impl<'a> DenseNodeInfoIter<'a> {
-    fn new(
-        block: &'a osmformat::PrimitiveBlock,
-        info: &'a osmformat::DenseInfo,
-    ) -> DenseNodeInfoIter<'a> {
+    fn new(info: &'a osmformat::DenseInfo) -> DenseNodeInfoIter<'a> {
         DenseNodeInfoIter {
-            block,
             versions: info.version.iter(),
             dtimestamps: info.timestamp.iter(),
             ctimestamp: 0,
@@ -262,7 +147,7 @@ impl<'a> DenseNodeInfoIter<'a> {
 }
 
 impl<'a> Iterator for DenseNodeInfoIter<'a> {
-    type Item = DenseNodeInfo<'a>;
+    type Item = osmformat::Info;
 
     fn next(&mut self) -> Option<Self::Item> {
         match (
@@ -285,47 +170,21 @@ impl<'a> Iterator for DenseNodeInfoIter<'a> {
                 self.cchangeset += *dchangeset;
                 self.cuid += *duid;
                 self.cuser_sid += *duser_sid;
-                Some(DenseNodeInfo {
-                    block: self.block,
-                    version,
-                    timestamp: self.ctimestamp,
-                    changeset: self.cchangeset,
-                    uid: self.cuid,
-                    user_sid: self.cuser_sid,
-                    visible: *visible_opt.unwrap_or(&true),
+                Some(osmformat::Info {
+                    version: Some(version),
+                    timestamp: Some(self.ctimestamp),
+                    changeset: Some(self.cchangeset),
+                    uid: Some(self.cuid),
+                    user_sid: Some(self.cuser_sid as u32),
+                    visible: Some(*visible_opt.unwrap_or(&true)),
+                    // protobuf uses some special fields we don't care about
+                    ..Default::default()
                 })
             }
             _ => None,
         }
     }
 }
-
-/// An iterator over the tags in a dense node.
-#[derive(Clone, Debug)]
-pub struct DenseTagIter<'a> {
-    block: &'a osmformat::PrimitiveBlock,
-    keys_vals_indices: std::slice::Iter<'a, i32>,
-}
-
-//TODO return Result
-impl<'a> Iterator for DenseTagIter<'a> {
-    type Item = (&'a str, &'a str);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        get_stringtable_key_value(
-            self.block,
-            self.keys_vals_indices.next().map(|v| *v as usize),
-            self.keys_vals_indices.next().map(|v| *v as usize),
-        )
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.keys_vals_indices.len() / 2;
-        (len, Some(len))
-    }
-}
-
-impl<'a> ExactSizeIterator for DenseTagIter<'a> {}
 
 /// An iterator over the tags of a node. It returns a pair of indices (key and value) to the
 /// stringtable of the current [`PrimitiveBlock`](crate::block::PrimitiveBlock).
@@ -336,11 +195,11 @@ pub struct DenseRawTagIter<'a> {
 
 //TODO return Result
 impl<'a> Iterator for DenseRawTagIter<'a> {
-    type Item = (i32, i32);
+    type Item = (u32, u32);
 
     fn next(&mut self) -> Option<Self::Item> {
         match (self.keys_vals_indices.next(), self.keys_vals_indices.next()) {
-            (Some(&key_index), Some(&val_index)) => Some((key_index, val_index)),
+            (Some(&key_index), Some(&val_index)) => Some((key_index as u32, val_index as u32)),
             _ => None,
         }
     }

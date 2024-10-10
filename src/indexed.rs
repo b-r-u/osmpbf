@@ -195,9 +195,6 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
             for node in group.nodes() {
                 check_min_max(node.id(), &mut min_node_id, &mut max_node_id);
             }
-            for node in group.dense_nodes() {
-                check_min_max(node.id, &mut min_node_id, &mut max_node_id);
-            }
             for way in group.ways() {
                 check_min_max(way.id(), &mut min_way_id, &mut max_way_id);
             }
@@ -247,7 +244,6 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
     ///         match element {
     ///             Element::Way(way) => ways += 1,
     ///             Element::Node(node) => nodes += 1,
-    ///             Element::DenseNode(dense_node) => nodes += 1,
     ///             Element::Relation(_) => (), // should not occur
     ///         }
     ///     },
@@ -316,12 +312,6 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
                             element_callback(&Element::Node(node));
                         }
                     }
-                    for node in group.dense_nodes() {
-                        if node_ids.binary_search(&node.id).is_ok() {
-                            // ID found, return dense node
-                            element_callback(&Element::DenseNode(node));
-                        }
-                    }
                 }
             }
         }
@@ -348,7 +338,6 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
     ///     |element| {
     ///         match element {
     ///             Element::Node(node) => nodes += 1,
-    ///             Element::DenseNode(dense_node) => nodes += 1,
     ///             _ => {}
     ///         }
     ///     },
@@ -381,9 +370,6 @@ impl<R: Read + Seek + Send> IndexedReader<R> {
                 for group in block.groups() {
                     for node in group.nodes() {
                         f(Element::Node(node));
-                    }
-                    for dense_node in group.dense_nodes() {
-                        f(Element::DenseNode(dense_node));
                     }
                 }
             }

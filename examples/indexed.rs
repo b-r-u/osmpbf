@@ -25,7 +25,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             match element {
                 Element::Way(_way) => ways += 1,
                 Element::Node(_node) => nodes += 1,
-                Element::DenseNode(_dense_node) => nodes += 1,
                 Element::Relation(_) => {} // should not occur
             }
         },
