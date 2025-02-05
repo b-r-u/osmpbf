@@ -6,12 +6,6 @@ os: Visual Studio 2015
 
 environment:
   matrix:
-    - channel: nightly
-      target: x86_64-pc-windows-msvc
-    - channel: nightly
-      target: x86_64-pc-windows-gnu
-    - channel: nightly
-      target: i686-pc-windows-gnu
     - channel: stable
       target: x86_64-pc-windows-msvc
     - channel: stable
