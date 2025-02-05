@@ -180,7 +180,7 @@ impl<'a> Iterator for DenseNodeIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for DenseNodeIter<'a> {}
+impl ExactSizeIterator for DenseNodeIter<'_> {}
 
 /// Optional metadata with non-geographic information about a dense node
 #[derive(Clone, Debug)]
@@ -340,7 +340,7 @@ impl<'a> Iterator for DenseTagIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for DenseTagIter<'a> {}
+impl ExactSizeIterator for DenseTagIter<'_> {}
 
 /// An iterator over the tags of a node. It returns a pair of indices (key and value) to the
 /// stringtable of the current [`PrimitiveBlock`](crate::block::PrimitiveBlock).
@@ -350,7 +350,7 @@ pub struct DenseRawTagIter<'a> {
 }
 
 //TODO return Result
-impl<'a> Iterator for DenseRawTagIter<'a> {
+impl Iterator for DenseRawTagIter<'_> {
     type Item = (i32, i32);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -366,4 +366,4 @@ impl<'a> Iterator for DenseRawTagIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for DenseRawTagIter<'a> {}
+impl ExactSizeIterator for DenseRawTagIter<'_> {}

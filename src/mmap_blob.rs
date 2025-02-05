@@ -126,7 +126,7 @@ pub struct MmapBlobReader<'a> {
     last_blob_ok: bool,
 }
 
-impl<'a> MmapBlobReader<'a> {
+impl MmapBlobReader<'_> {
     /// Creates a new `MmapBlobReader`.
     ///
     /// # Example

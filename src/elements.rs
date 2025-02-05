@@ -329,7 +329,7 @@ pub struct WayRefIter<'a> {
     current: i64,
 }
 
-impl<'a> Iterator for WayRefIter<'a> {
+impl Iterator for WayRefIter<'_> {
     type Item = i64;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -347,7 +347,7 @@ impl<'a> Iterator for WayRefIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for WayRefIter<'a> {}
+impl ExactSizeIterator for WayRefIter<'_> {}
 
 pub struct WayNodeLocation {
     lat: i64,
@@ -398,7 +398,7 @@ pub struct WayNodeLocationsIter<'a> {
     clon: i64,
 }
 
-impl<'a> Iterator for WayNodeLocationsIter<'a> {
+impl Iterator for WayNodeLocationsIter<'_> {
     type Item = WayNodeLocation;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -420,7 +420,7 @@ impl<'a> Iterator for WayNodeLocationsIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for WayNodeLocationsIter<'a> {}
+impl ExactSizeIterator for WayNodeLocationsIter<'_> {}
 
 /// The element type of a relation member.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -508,7 +508,7 @@ impl<'a> Iterator for RelMemberIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for RelMemberIter<'a> {}
+impl ExactSizeIterator for RelMemberIter<'_> {}
 
 /// An iterator over the tags of an element. It returns a pair of strings (key and value).
 #[derive(Clone, Debug)]
@@ -535,7 +535,7 @@ impl<'a> Iterator for TagIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for TagIter<'a> {}
+impl ExactSizeIterator for TagIter<'_> {}
 
 /// An iterator over the tags of an element. It returns a pair of indices (key and value) to the
 /// stringtable of the current [`PrimitiveBlock`](crate::block::PrimitiveBlock).
@@ -546,7 +546,7 @@ pub struct RawTagIter<'a> {
 }
 
 //TODO return Result?
-impl<'a> Iterator for RawTagIter<'a> {
+impl Iterator for RawTagIter<'_> {
     type Item = (u32, u32);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -561,7 +561,7 @@ impl<'a> Iterator for RawTagIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for RawTagIter<'a> {}
+impl ExactSizeIterator for RawTagIter<'_> {}
 
 /// Additional metadata that might be included in each element.
 #[derive(Clone, Debug)]

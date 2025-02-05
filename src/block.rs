@@ -313,7 +313,7 @@ impl<'a> Iterator for GroupIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for GroupIter<'a> {}
+impl ExactSizeIterator for GroupIter<'_> {}
 
 /// An iterator over the nodes in a [`PrimitiveGroup`].
 #[derive(Clone, Debug)]
@@ -349,7 +349,7 @@ impl<'a> Iterator for GroupNodeIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for GroupNodeIter<'a> {}
+impl ExactSizeIterator for GroupNodeIter<'_> {}
 
 /// An iterator over the ways in a [`PrimitiveGroup`].
 #[derive(Clone, Debug)]
@@ -385,7 +385,7 @@ impl<'a> Iterator for GroupWayIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for GroupWayIter<'a> {}
+impl ExactSizeIterator for GroupWayIter<'_> {}
 
 /// An iterator over the relations in a [`PrimitiveGroup`].
 #[derive(Clone, Debug)]
@@ -421,7 +421,7 @@ impl<'a> Iterator for GroupRelationIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for GroupRelationIter<'a> {}
+impl ExactSizeIterator for GroupRelationIter<'_> {}
 
 pub(crate) fn str_from_stringtable(
     block: &osmformat::PrimitiveBlock,
