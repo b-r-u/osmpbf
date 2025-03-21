@@ -29,12 +29,12 @@ impl HeaderBlock {
 
     /// Returns a list of required features that a parser needs to implement to parse the following
     /// [`PrimitiveBlock`]s.
-    pub fn required_features(&self) -> &[String] {
+    pub fn required_features(&self) -> &[protobuf::Chars] {
         self.header.required_features.as_slice()
     }
 
     /// Returns a list of optional features that a parser can choose to ignore.
-    pub fn optional_features(&self) -> &[String] {
+    pub fn optional_features(&self) -> &[protobuf::Chars] {
         self.header.optional_features.as_slice()
     }
 
@@ -145,7 +145,7 @@ impl PrimitiveBlock {
     /// themselves; instead, they just store indices to the stringtable. By convention, the
     /// contained strings are UTF-8 encoded but it is not safe to assume that (use
     /// `std::str::from_utf8`).
-    pub fn raw_stringtable(&self) -> &[Vec<u8>] {
+    pub fn raw_stringtable(&self) -> &[bytes::Bytes] {
         self.block.stringtable.s.as_slice()
     }
 }

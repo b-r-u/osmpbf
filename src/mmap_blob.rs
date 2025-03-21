@@ -7,6 +7,7 @@ use crate::error::{new_blob_error, new_protobuf_error, BlobError, Result};
 use crate::proto::{fileformat, osmformat};
 use crate::MAX_BLOB_HEADER_SIZE;
 use byteorder::ByteOrder;
+use bytes::Bytes;
 use protobuf::Message;
 use std::fs::File;
 use std::path::Path;
@@ -67,28 +68,24 @@ impl Mmap {
     }
 
     /// Returns an iterator over the blobs in this memory map.
-    pub fn blob_iter(&self) -> MmapBlobReader {
+    pub fn blob_iter(self) -> MmapBlobReader {
         MmapBlobReader::new(self)
-    }
-
-    fn as_slice(&self) -> &[u8] {
-        &self.mmap
     }
 }
 
 /// A PBF blob from a memory map.
 #[derive(Clone, Debug)]
-pub struct MmapBlob<'a> {
+pub struct MmapBlob {
     header: BlobHeader,
-    data: &'a [u8],
+    data: Bytes,
     offset: ByteOffset,
 }
 
-impl<'a> MmapBlob<'a> {
+impl MmapBlob {
     /// Decodes the blob and tries to obtain the inner content (usually a [`HeaderBlock`] or a
     /// [`PrimitiveBlock`]). This operation might involve an expensive decompression step.
-    pub fn decode(&'a self) -> Result<BlobDecode<'a>> {
-        let blob = fileformat::Blob::parse_from_bytes(self.data)
+    pub fn decode(&self) -> Result<BlobDecode<'_>> {
+        let blob = fileformat::Blob::parse_from_tokio_bytes(&self.data)
             .map_err(|e| new_protobuf_error(e, "blob content"))?;
         match self.header.type_() {
             "OSMHeader" => {
@@ -120,13 +117,13 @@ impl<'a> MmapBlob<'a> {
 
 /// A reader for memory mapped PBF files that allows iterating over [`MmapBlob`]s.
 #[derive(Clone, Debug)]
-pub struct MmapBlobReader<'a> {
-    mmap: &'a Mmap,
+pub struct MmapBlobReader {
+    bytes: Bytes,
     offset: usize,
     last_blob_ok: bool,
 }
 
-impl MmapBlobReader<'_> {
+impl MmapBlobReader {
     /// Creates a new `MmapBlobReader`.
     ///
     /// # Example
@@ -136,15 +133,15 @@ impl MmapBlobReader<'_> {
     /// # fn foo() -> Result<()> {
     ///
     /// let mmap = unsafe { Mmap::from_path("tests/test.osm.pbf")? };
-    /// let reader = MmapBlobReader::new(&mmap);
+    /// let reader = MmapBlobReader::new(mmap);
     ///
     /// # Ok(())
     /// # }
     /// # foo().unwrap();
     /// ```
-    pub fn new(mmap: &Mmap) -> MmapBlobReader {
+    pub fn new(mmap: Mmap) -> MmapBlobReader {
         MmapBlobReader {
-            mmap,
+            bytes: Bytes::from_owner(mmap.mmap),
             offset: 0,
             last_blob_ok: true,
         }
@@ -159,7 +156,7 @@ impl MmapBlobReader<'_> {
     /// # fn foo() -> Result<()> {
     ///
     /// let mmap = unsafe { Mmap::from_path("tests/test.osm.pbf")? };
-    /// let mut reader = MmapBlobReader::new(&mmap);
+    /// let mut reader = MmapBlobReader::new(mmap);
     ///
     /// let first_blob = reader.next().unwrap()?;
     /// let second_blob = reader.next().unwrap()?;
@@ -178,11 +175,11 @@ impl MmapBlobReader<'_> {
     }
 }
 
-impl<'a> Iterator for MmapBlobReader<'a> {
-    type Item = Result<MmapBlob<'a>>;
+impl Iterator for MmapBlobReader {
+    type Item = Result<MmapBlob>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let slice = &self.mmap.as_slice()[self.offset..];
+        let slice = self.bytes.slice(self.offset..);
 
         match slice.len() {
             0 => return None,
@@ -193,7 +190,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             _ => {}
         }
 
-        let header_size = byteorder::BigEndian::read_u32(slice) as usize;
+        let header_size = byteorder::BigEndian::read_u32(&slice) as usize;
 
         if header_size as u64 >= MAX_BLOB_HEADER_SIZE {
             self.last_blob_ok = false;
@@ -211,7 +208,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
             return Some(Err(io_error.into()));
         }
 
-        let header = match BlobHeader::parse_from_bytes(&slice[4..(4 + header_size)]) {
+        let header = match BlobHeader::parse_from_tokio_bytes(&slice.slice(4..(4 + header_size))) {
             Ok(x) => x,
             Err(e) => {
                 self.last_blob_ok = false;
@@ -236,7 +233,7 @@ impl<'a> Iterator for MmapBlobReader<'a> {
 
         Some(Ok(MmapBlob {
             header,
-            data: &slice[(4 + header_size)..chunk_size],
+            data: slice.slice((4 + header_size)..chunk_size),
             offset: ByteOffset(prev_offset as u64),
         }))
     }
