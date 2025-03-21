@@ -77,12 +77,12 @@ fn approx_eq(a: f64, b: f64) -> bool {
 }
 
 /// Ensure two vectors have the same values, ignoring their order
-fn is_same_unordered(a: &[&str], b: &[String]) -> bool {
+fn is_same_unordered(a: &[&str], b: &[protobuf::Chars]) -> bool {
     let mut a = a.to_vec();
     let mut b = b.to_vec();
     a.sort_unstable();
     b.sort_unstable();
-    a == b
+    a.iter().zip(b).all(|(a, b)| *a == &*b)
 }
 
 // Compare the content of a HeaderBlock with known values from the test file.
@@ -225,7 +225,7 @@ fn read_blobs() {
 fn read_mmap_blobs() {
     for test_file in TEST_FILE_PATHS {
         let mmap = unsafe { Mmap::from_path(test_file.path).unwrap() };
-        let reader = MmapBlobReader::new(&mmap);
+        let reader = MmapBlobReader::new(mmap);
 
         let blobs = reader.collect::<Result<Vec<_>>>().unwrap();
 

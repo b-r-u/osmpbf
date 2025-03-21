@@ -125,7 +125,7 @@ impl<'a> Node<'a> {
     /// themselves; instead, they just store indices to a common stringtable. By convention, the
     /// contained strings are UTF-8 encoded but it is not safe to assume that (use
     /// `std::str::from_utf8`).
-    pub fn raw_stringtable(&self) -> &[Vec<u8>] {
+    pub fn raw_stringtable(&self) -> &[bytes::Bytes] {
         self.block.stringtable.s.as_slice()
     }
 }
@@ -235,7 +235,7 @@ impl<'a> Way<'a> {
     /// themselves; instead, they just store indices to a common stringtable. By convention, the
     /// contained strings are UTF-8 encoded but it is not safe to assume that (use
     /// `std::str::from_utf8`).
-    pub fn raw_stringtable(&self) -> &[Vec<u8>] {
+    pub fn raw_stringtable(&self) -> &[bytes::Bytes] {
         self.block.stringtable.s.as_slice()
     }
 }
@@ -315,7 +315,7 @@ impl<'a> Relation<'a> {
     /// themselves; instead, they just store indices to a common stringtable. By convention, the
     /// contained strings are UTF-8 encoded but it is not safe to assume that (use
     /// `std::str::from_utf8`).
-    pub fn raw_stringtable(&self) -> &[Vec<u8>] {
+    pub fn raw_stringtable(&self) -> &[bytes::Bytes] {
         self.block.stringtable.s.as_slice()
     }
 }

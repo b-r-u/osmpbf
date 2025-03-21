@@ -19,9 +19,10 @@ zlib-ng = ["flate2/zlib-ng"]
 
 [dependencies]
 byteorder = "1.4"
+bytes = "1.10.1"
 flate2 = { version = "1.0", default-features = false }
 memmap2 = "0.5"
-protobuf = "3.1"
+protobuf = { version = "3.1", features = ["with-bytes"] }
 rayon = "1.5"
 
 [dev-dependencies]

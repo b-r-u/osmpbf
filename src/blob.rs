@@ -4,6 +4,7 @@ use crate::block::{HeaderBlock, PrimitiveBlock};
 use crate::error::{new_blob_error, new_error, new_protobuf_error, BlobError, ErrorKind, Result};
 use crate::proto::fileformat;
 use byteorder::ReadBytesExt;
+use bytes::Bytes;
 use protobuf::Message;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -186,6 +187,16 @@ impl<R: Read + Send> BlobReader<R> {
         }
     }
 
+    fn handle_decode_error<T>(
+        &mut self,
+        error: protobuf::Error,
+        msg: &'static str,
+    ) -> Option<Result<T>> {
+        self.offset = None;
+        self.last_blob_ok = false;
+        Some(Err(new_protobuf_error(error, msg)))
+    }
+
     fn read_blob_header(&mut self) -> Option<Result<fileformat::BlobHeader>> {
         let header_size: u64 = match self.reader.read_u32::<byteorder::BigEndian>() {
             Ok(n) => {
@@ -215,13 +226,15 @@ impl<R: Read + Send> BlobReader<R> {
         }
 
         let mut reader = self.reader.by_ref().take(header_size);
-        let header = match fileformat::BlobHeader::parse_from_reader(&mut reader) {
+        let mut header_data = Vec::with_capacity(header_size as usize);
+        if let Err(e) = reader.read_to_end(&mut header_data) {
+            return self.handle_decode_error(e.into(), "could not read from reader");
+        }
+
+        let header = match fileformat::BlobHeader::parse_from_tokio_bytes(&Bytes::from(header_data))
+        {
             Ok(header) => header,
-            Err(e) => {
-                self.offset = None;
-                self.last_blob_ok = false;
-                return Some(Err(new_protobuf_error(e, "blob header")));
-            }
+            Err(e) => return self.handle_decode_error(e, "could not parse read header data"),
         };
 
         self.offset = self.offset.map(|x| ByteOffset(x.0 + header_size));
@@ -277,13 +290,14 @@ impl<R: Read + Send> Iterator for BlobReader<R> {
         };
 
         let mut reader = self.reader.by_ref().take(header.datasize() as u64);
-        let blob = match fileformat::Blob::parse_from_reader(&mut reader) {
+        let mut blob_data = Vec::with_capacity(header.datasize() as usize);
+        if let Err(e) = reader.read_to_end(&mut blob_data) {
+            return self.handle_decode_error(e.into(), "could not read from blob");
+        }
+
+        let blob = match fileformat::Blob::parse_from_tokio_bytes(&Bytes::from(blob_data)) {
             Ok(blob) => blob,
-            Err(e) => {
-                self.offset = None;
-                self.last_blob_ok = false;
-                return Some(Err(new_protobuf_error(e, "blob content")));
-            }
+            Err(e) => return self.handle_decode_error(e, "blob content"),
         };
 
         self.offset = self
@@ -453,18 +467,24 @@ impl BlobReader<BufReader<File>> {
 }
 
 pub(crate) fn decode_blob<T: Message>(blob: &fileformat::Blob) -> Result<T> {
-    if blob.has_raw() {
-        let size = blob.raw().len() as u64;
-        if size < MAX_BLOB_MESSAGE_SIZE {
-            T::parse_from_bytes(blob.raw()).map_err(|e| new_protobuf_error(e, "raw blob data"))
-        } else {
-            Err(new_blob_error(BlobError::MessageTooBig { size }))
+    match &blob.data {
+        Some(fileformat::blob::Data::Raw(bytes)) => {
+            let size = bytes.len() as u64;
+            if size < MAX_BLOB_MESSAGE_SIZE {
+                T::parse_from_tokio_bytes(bytes).map_err(|e| new_protobuf_error(e, "raw blob data"))
+            } else {
+                Err(new_blob_error(BlobError::MessageTooBig { size }))
+            }
         }
-    } else if blob.has_zlib_data() {
-        let mut decoder = ZlibDecoder::new(blob.zlib_data()).take(MAX_BLOB_MESSAGE_SIZE);
-        T::parse_from_reader(&mut decoder).map_err(|e| new_protobuf_error(e, "blob zlib data"))
-    } else {
-        Err(new_blob_error(BlobError::Empty))
+        Some(fileformat::blob::Data::ZlibData(bytes)) => {
+            let mut decoder = ZlibDecoder::new(&**bytes).take(MAX_BLOB_MESSAGE_SIZE);
+            let mut decoded_bytes = Vec::with_capacity(bytes.len());
+            decoder.read_to_end(&mut decoded_bytes)?;
+
+            T::parse_from_tokio_bytes(&Bytes::from(decoded_bytes))
+                .map_err(|e| new_protobuf_error(e, "blob zlib data"))
+        }
+        _ => Err(new_blob_error(BlobError::Empty)),
     }
 }
 
@@ -481,13 +501,13 @@ mod tests {
             ("OSMData", BlobType::OsmData),
         ];
 
-        for (string, blob_type) in &pairs {
+        for (string, blob_type) in pairs {
             let mut ff_header = fileformat::BlobHeader::new();
-            ff_header.set_type(string.to_string());
+            ff_header.set_type(protobuf::Chars::from(string));
             let ff_blob = fileformat::Blob::new();
 
             let blob = Blob::new(ff_header, ff_blob, None);
-            assert_eq!(blob.get_type(), *blob_type);
+            assert_eq!(blob.get_type(), blob_type);
         }
     }
 }
