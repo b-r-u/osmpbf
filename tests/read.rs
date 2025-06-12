@@ -1,4 +1,8 @@
 use assert_approx_eq::assert_approx_eq;
+#[cfg(feature = "async")]
+use futures_util::TryStreamExt;
+#[cfg(feature = "async")]
+use object_store::ObjectStore;
 use osmpbf::*;
 
 static REQ_SCHEMA_V6: &str = "OsmSchema-V0.6";
@@ -244,6 +248,34 @@ fn read_mmap_blobs() {
         } else {
             panic!("Unexpected blob type");
         }
+    }
+}
+
+#[tokio::test]
+#[cfg(feature = "async")]
+async fn read_blobs_async() {
+    for test_file in TEST_FILE_PATHS {
+        // Setup object store
+        let store = object_store::local::LocalFileSystem::new();
+        let path = std::path::Path::new(test_file.path);
+        let filesystem_path = object_store::path::Path::from_filesystem_path(path).unwrap();
+        let object_meta = store.head(&filesystem_path).await.unwrap();
+        let buf_reader =
+            object_store::buffered::BufReader::new(std::sync::Arc::new(store), &object_meta);
+
+        // Read blobs
+        let mut reader = AsyncBlobReader::new(buf_reader);
+        let blobs: Vec<Blob> = reader.stream().try_collect().await.unwrap();
+
+        assert_eq!(blobs.len(), 2);
+        assert_eq!(blobs[0].get_type(), BlobType::OsmHeader);
+        assert_eq!(blobs[1].get_type(), BlobType::OsmData);
+
+        let header = blobs[0].to_headerblock().unwrap();
+        check_header_block_content(&header, test_file);
+
+        let primitive_block = blobs[1].to_primitiveblock().unwrap();
+        check_primitive_block_content(&primitive_block);
     }
 }
 
