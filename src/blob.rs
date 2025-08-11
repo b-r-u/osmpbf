@@ -82,7 +82,7 @@ impl Blob {
 
     /// Decodes the Blob and tries to obtain the inner content (usually a [`HeaderBlock`] or a
     /// [`PrimitiveBlock`]). This operation might involve an expensive decompression step.
-    pub fn decode(&self) -> Result<BlobDecode> {
+    pub fn decode(&self) -> Result<BlobDecode<'_>> {
         match self.get_type() {
             BlobType::OsmHeader => {
                 let block = Box::new(self.to_headerblock()?);
@@ -97,7 +97,7 @@ impl Blob {
     }
 
     /// Returns the type of a blob without decoding its content.
-    pub fn get_type(&self) -> BlobType {
+    pub fn get_type(&self) -> BlobType<'_> {
         match self.header.type_() {
             x if x == BlobType::OsmHeader.as_str() => BlobType::OsmHeader,
             x if x == BlobType::OsmData.as_str() => BlobType::OsmData,
@@ -138,7 +138,7 @@ impl BlobHeader {
     }
 
     /// Returns the type of the following blob.
-    pub fn blob_type(&self) -> BlobType {
+    pub fn blob_type(&self) -> BlobType<'_> {
         match self.header.type_() {
             "OSMHeader" => BlobType::OsmHeader,
             "OSMData" => BlobType::OsmData,

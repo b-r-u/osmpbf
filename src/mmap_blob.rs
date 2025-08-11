@@ -67,7 +67,7 @@ impl Mmap {
     }
 
     /// Returns an iterator over the blobs in this memory map.
-    pub fn blob_iter(&self) -> MmapBlobReader {
+    pub fn blob_iter(&self) -> MmapBlobReader<'_> {
         MmapBlobReader::new(self)
     }
 
@@ -104,7 +104,7 @@ impl<'a> MmapBlob<'a> {
     }
 
     /// Returns the type of a blob without decoding its content.
-    pub fn get_type(&self) -> BlobType {
+    pub fn get_type(&self) -> BlobType<'_> {
         match self.header.type_() {
             "OSMHeader" => BlobType::OsmHeader,
             "OSMData" => BlobType::OsmData,
@@ -142,7 +142,7 @@ impl MmapBlobReader<'_> {
     /// # }
     /// # foo().unwrap();
     /// ```
-    pub fn new(mmap: &Mmap) -> MmapBlobReader {
+    pub fn new(mmap: &Mmap) -> MmapBlobReader<'_> {
         MmapBlobReader {
             mmap,
             offset: 0,

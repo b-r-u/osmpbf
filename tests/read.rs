@@ -48,26 +48,26 @@ static LOC_ON_WAYS_FILE_PATH: TestFile = TestFile {
 
 // Helper functions to simplify testing
 trait Getter {
-    fn t_nodes(&self) -> Vec<Node>;
-    fn t_dense_nodes(&self) -> Vec<DenseNode>;
-    fn t_ways(&self) -> Vec<Way>;
-    fn t_relations(&self) -> Vec<Relation>;
+    fn t_nodes(&self) -> Vec<Node<'_>>;
+    fn t_dense_nodes(&self) -> Vec<DenseNode<'_>>;
+    fn t_ways(&self) -> Vec<Way<'_>>;
+    fn t_relations(&self) -> Vec<Relation<'_>>;
 }
 
 impl Getter for PrimitiveBlock {
-    fn t_nodes(&self) -> Vec<Node> {
+    fn t_nodes(&self) -> Vec<Node<'_>> {
         self.groups().flat_map(|g| g.nodes()).collect()
     }
 
-    fn t_dense_nodes(&self) -> Vec<DenseNode> {
+    fn t_dense_nodes(&self) -> Vec<DenseNode<'_>> {
         self.groups().flat_map(|g| g.dense_nodes()).collect()
     }
 
-    fn t_ways(&self) -> Vec<Way> {
+    fn t_ways(&self) -> Vec<Way<'_>> {
         self.groups().flat_map(|g| g.ways()).collect()
     }
 
-    fn t_relations(&self) -> Vec<Relation> {
+    fn t_relations(&self) -> Vec<Relation<'_>> {
         self.groups().flat_map(|g| g.relations()).collect()
     }
 }

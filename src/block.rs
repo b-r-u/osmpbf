@@ -111,12 +111,12 @@ impl PrimitiveBlock {
     }
 
     /// Returns an iterator over the elements in this `PrimitiveBlock`.
-    pub fn elements(&self) -> BlockElementsIter {
+    pub fn elements(&self) -> BlockElementsIter<'_> {
         BlockElementsIter::new(&self.block)
     }
 
     /// Returns an iterator over the groups in this `PrimitiveBlock`.
-    pub fn groups(&self) -> GroupIter {
+    pub fn groups(&self) -> GroupIter<'_> {
         GroupIter::new(&self.block)
     }
 
