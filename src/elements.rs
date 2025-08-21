@@ -8,6 +8,8 @@ use crate::proto::osmformat::PrimitiveBlock;
 use osmformat::relation::MemberType;
 use protobuf::EnumOrUnknown;
 
+pub use osmformat::relation::MemberType as RelMemberType;
+
 /// An enum with the OSM core elements: nodes, ways and relations.
 #[derive(Clone, Debug)]
 pub enum Element<'a> {
@@ -422,24 +424,6 @@ impl Iterator for WayNodeLocationsIter<'_> {
 
 impl ExactSizeIterator for WayNodeLocationsIter<'_> {}
 
-/// The element type of a relation member.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum RelMemberType {
-    Node,
-    Way,
-    Relation,
-}
-
-impl From<EnumOrUnknown<MemberType>> for RelMemberType {
-    fn from(rmt: EnumOrUnknown<MemberType>) -> RelMemberType {
-        match rmt.unwrap() {
-            MemberType::NODE => RelMemberType::Node,
-            MemberType::WAY => RelMemberType::Way,
-            MemberType::RELATION => RelMemberType::Relation,
-        }
-    }
-}
-
 //TODO encapsulate member_id based on member_type (NodeId, WayId, RelationId)
 /// A member of a relation.
 ///
@@ -496,7 +480,7 @@ impl<'a> Iterator for RelMemberIter<'a> {
                     block: self.block,
                     role_sid: *role_sid,
                     member_id: self.current_member_id,
-                    member_type: RelMemberType::from(*member_type),
+                    member_type: member_type.unwrap(),
                 })
             }
             _ => None,
