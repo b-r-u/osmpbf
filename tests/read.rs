@@ -279,7 +279,7 @@ fn read_elements() {
 }
 
 #[test]
-fn par_read_elements() {
+fn par_map_reduce_elements() {
     for test_file in TEST_FILE_PATHS {
         let reader = ElementReader::from_path(test_file.path).unwrap();
 
@@ -288,6 +288,31 @@ fn par_read_elements() {
             .unwrap();
 
         assert_eq!(elements, 5);
+    }
+}
+
+#[test]
+fn par_filter_map_elements() {
+    for test_file in TEST_FILE_PATHS {
+        let reader = ElementReader::from_path(test_file.path).unwrap();
+
+        let node_whitelist = vec![42, 105, 108, 1024];
+        let found_ids: Vec<i64> = reader
+            .par_filter_map_collect(|e| {
+                match e {
+                    Element::Node(n) => {
+                        let id = n.id();
+                        node_whitelist.contains(&id).then(|| id)
+                    }
+                    Element::DenseNode(n) => {
+                        node_whitelist.contains(&n.id).then(|| n.id)
+                    }
+                    _ => None,
+                }
+            })
+            .unwrap();
+
+        assert_eq!(found_ids, vec![105, 108]);
     }
 }
 

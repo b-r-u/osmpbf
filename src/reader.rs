@@ -140,7 +140,66 @@ impl<R: Read + Send> ElementReader<R> {
                 },
             )
     }
+
+    /// Parallel filter_map/collect. Decodes the PBF structure in parallel, calls the closure
+    /// `filter_map_op` on each element. Make sure that the filter results in a subset compatible
+    /// with your available system memory as the subset will need to be allocated in memory.
+    ///
+    /// # Errors
+    /// Returns the first Error encountered while parsing the PBF structure.
+    ///
+    /// # Example
+    /// ```
+    /// use osmpbf::*;
+    ///
+    /// # fn foo() -> Result<()> {
+    /// let reader = ElementReader::from_path("tests/test.osm.pbf")?;
+    ///
+    /// let wanted_node_ids = vec![6, 7, 8];
+    /// // Get existing dense node ids
+    /// let found_node_ids: Vec<_> = reader.par_filter_map_collect(
+    ///     |element| {
+    ///         match element {
+    ///             Element::DenseNode(n) => {
+    ///                 wanted_node_ids.contains(&n.id).then(|| n.id)
+    ///             },
+    ///             _ => None,
+    ///         }
+    ///     }
+    /// )?;
+    ///
+    /// println!("Node ids: {found_node_ids:?}");
+    /// # Ok(())
+    /// # }
+    /// # foo().unwrap();
+    /// ```
+    pub fn par_filter_map_collect<FMP, T, C>(
+        self,
+        filter_map_op: FMP,
+    ) -> Result<C>
+    where
+        FMP: for<'a> Fn(Element<'a>) -> Option<T> + Sync + Send,
+        T: Send,
+        C: FromIterator<T>,
+    {
+        let result =
+            self.blob_iter
+                .par_bridge()
+                .filter_map(|blob| match blob.ok()?.decode() {
+                    Ok(BlobDecode::OsmHeader(_))
+                    | Ok(BlobDecode::Unknown(_)) => None,
+                    Ok(BlobDecode::OsmData(block)) => Some(Ok(block
+                        .elements()
+                        .filter_map(&filter_map_op)
+                        .collect::<Vec<T>>())),
+                    Err(e) => Some(Err(e)),
+                })
+                .collect::<Result<Vec<Vec<T>>>>()?;
+
+        Ok(result.into_iter().flatten().collect())
+    }
 }
+
 
 impl ElementReader<BufReader<File>> {
     /// Tries to open the file at the given path and constructs an `ElementReader` from this.
