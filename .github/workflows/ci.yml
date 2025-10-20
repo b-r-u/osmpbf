@@ -42,7 +42,7 @@ jobs:
     strategy:
       matrix:
         # We test using the latest stable and MSRV Rust versions.
-        rust_version: ["stable", "1.81.0"]
+        rust_version: ["stable", "1.82.0"]
         runs_on: ["ubuntu-latest", "windows-latest", "macos-latest"]
     runs-on: "${{ matrix.runs_on }}"
     steps:
