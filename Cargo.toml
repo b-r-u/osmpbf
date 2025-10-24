@@ -7,7 +7,7 @@ homepage = "https://github.com/b-r-u/osmpbf"
 description = "A reader for the OpenStreetMap PBF file format (*.osm.pbf)."
 categories = ["parser-implementations", "encoding", "science"]
 keywords = ["openstreetmap", "osm", "pbf", "protocolbuffer", "protobuf"]
-rust-version = "1.85"
+rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 
