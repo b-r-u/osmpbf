@@ -64,19 +64,22 @@ pub struct ByteOffset(pub u64);
 pub struct Blob {
     header: fileformat::BlobHeader,
     blob: fileformat::Blob,
-    offset: Option<ByteOffset>,
+}
+
+#[derive(Clone, Debug)]
+pub struct BlobRange {
+    pub(crate) data_start: ByteOffset,
+    pub(crate) data_end: ByteOffset,
 }
 
 impl Blob {
-    fn new(
+    pub(crate) fn new(
         header: fileformat::BlobHeader,
         blob: fileformat::Blob,
-        offset: Option<ByteOffset>,
     ) -> Blob {
         Blob {
             header,
             blob,
-            offset,
         }
     }
 
@@ -92,7 +95,10 @@ impl Blob {
                 let block = self.to_primitiveblock()?;
                 Ok(BlobDecode::OsmData(block))
             }
-            BlobType::Unknown(x) => Ok(BlobDecode::Unknown(x)),
+            BlobType::Unknown(x) => {
+                let block = self.to_primitiveblock()?;
+                Ok(BlobDecode::OsmData(block))
+            }
         }
     }
 
@@ -107,9 +113,9 @@ impl Blob {
 
     /// Returns the byte offset of the blob from the start of its source stream.
     /// This might be [`None`] if the source stream does not implement [`Seek`].
-    pub fn offset(&self) -> Option<ByteOffset> {
-        self.offset
-    }
+    // pub fn offset(&self) -> Option<ByteOffset> {
+    //     self.offset
+    // }
 
     /// Tries to decode the blob to a [`HeaderBlock`]. This operation might involve an expensive
     /// decompression step.
@@ -155,9 +161,9 @@ impl BlobHeader {
 /// A reader for PBF files that allows iterating over [`Blob`]s.
 #[derive(Clone, Debug)]
 pub struct BlobReader<R: Read + Send> {
-    reader: R,
+    pub(crate) reader: R,
     /// Current reader offset in bytes from the start of the stream.
-    offset: Option<ByteOffset>,
+    pub(crate) offset: Option<ByteOffset>,
     last_blob_ok: bool,
 }
 
@@ -186,7 +192,15 @@ impl<R: Read + Send> BlobReader<R> {
         }
     }
 
-    fn read_blob_header(&mut self) -> Option<Result<fileformat::BlobHeader>> {
+    pub fn at_offset(reader: R, offset: Option<ByteOffset>) -> BlobReader<R> {
+        BlobReader {
+            reader,
+            offset,
+            last_blob_ok: true,
+        }
+    }
+
+    fn read_blob_header(&mut self) -> Option<Result<(fileformat::BlobHeader, u64)>> {
         let header_size: u64 = match self.reader.read_u32::<byteorder::BigEndian>() {
             Ok(n) => {
                 self.offset = self.offset.map(|x| ByteOffset(x.0 + 4));
@@ -226,7 +240,7 @@ impl<R: Read + Send> BlobReader<R> {
 
         self.offset = self.offset.map(|x| ByteOffset(x.0 + header_size));
 
-        Some(Ok(header))
+        Some(Ok((header, header_size)))
     }
 }
 
@@ -270,7 +284,7 @@ impl<R: Read + Send> Iterator for BlobReader<R> {
 
         let prev_offset = self.offset;
 
-        let header = match self.read_blob_header() {
+        let (header, header_size) = match self.read_blob_header() {
             Some(Ok(header)) => header,
             Some(Err(err)) => return Some(Err(err)),
             None => return None,
@@ -286,11 +300,28 @@ impl<R: Read + Send> Iterator for BlobReader<R> {
             }
         };
 
+
         self.offset = self
             .offset
             .map(|x| ByteOffset(x.0 + header.datasize() as u64));
 
-        Some(Ok(Blob::new(header, blob, prev_offset)))
+
+        let range = {
+            if let Some(prev_offset) = prev_offset {
+                if let Some(data_end) = self.offset {
+                    Some(BlobRange {
+                        data_start: ByteOffset(prev_offset.0 + header_size),
+                        data_end,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
+        Some(Ok(Blob::new(header, blob)))
     }
 }
 
@@ -412,7 +443,7 @@ impl<R: Read + Seek + Send> BlobReader<R> {
         let prev_offset = self.offset;
 
         // read header
-        let header = match self.read_blob_header() {
+        let (header, header_size) = match self.read_blob_header() {
             Some(Ok(header)) => header,
             Some(Err(err)) => return Some(Err(err)),
             None => return None,
@@ -486,7 +517,7 @@ mod tests {
             ff_header.set_type(string.to_string());
             let ff_blob = fileformat::Blob::new();
 
-            let blob = Blob::new(ff_header, ff_blob, None);
+            let blob = Blob::new(ff_header, ff_blob);
             assert_eq!(blob.get_type(), *blob_type);
         }
     }
