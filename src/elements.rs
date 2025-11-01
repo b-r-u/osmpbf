@@ -198,6 +198,10 @@ impl<'a> Way<'a> {
         }
     }
 
+    pub fn node_ids(&self) -> Vec<i64> {
+        self.refs().collect()
+    }
+
     /// Returns an iterator over the way's node locations (latitude, longitude).
     /// Only available if the optional `LocationsOnWays` feature is included in the
     /// [`HeaderBlock`](crate::block::HeaderBlock) and should return an empty iterator otherwise

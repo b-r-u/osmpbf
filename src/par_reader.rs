@@ -4,7 +4,8 @@ use crate::{Blob, BlobError, BlobRange, ByteOffset, MAX_BLOB_HEADER_SIZE};
 use byteorder::ReadBytesExt;
 use protobuf::Message;
 use rayon::prelude::*;
-use std::io::{BufReader, Read, Seek, SeekFrom};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
+use std::iter;
 
 /// Sequential stage: raw bytes from file
 #[derive(Clone, Debug)]
@@ -32,7 +33,7 @@ impl<'a, R: Read + Send> RawBlobReader<'a, R> {
         }
     }
 
-    fn read_blob_header(&mut self) -> Option<crate::Result<(fileformat::BlobHeader, u64)>> {
+    fn read_blob_header(&mut self) -> Option<crate::Result<fileformat::BlobHeader>> {
         let header_size: u64 = match self.reader.read_u32::<byteorder::BigEndian>() {
             Ok(n) => {
                 self.offset = self.offset.map(|x| ByteOffset(x.0 + 4));
@@ -68,7 +69,7 @@ impl<'a, R: Read + Send> RawBlobReader<'a, R> {
         };
 
         self.offset = self.offset.map(|x| ByteOffset(x.0 + header_size));
-        Some(Ok((header, header_size)))
+        Some(Ok(header))
     }
 }
 
@@ -80,11 +81,12 @@ impl<R: Read + Send> Iterator for RawBlobReader<'_, R> {
             return None;
         }
 
-        let prev_offset = self.offset;
-        let (header, header_size) = match self.read_blob_header()? {
+        let header = match self.read_blob_header()? {
             Ok(h) => h,
             Err(e) => return Some(Err(e)),
         };
+
+        let start_offset = self.offset;
 
         let mut buf = vec![0u8; header.datasize() as usize];
         if let Err(e) = self.reader.read_exact(&mut buf) {
@@ -96,19 +98,16 @@ impl<R: Read + Send> Iterator for RawBlobReader<'_, R> {
             .offset
             .map(|x| ByteOffset(x.0 + header.datasize() as u64));
 
-        let range = prev_offset.and_then(|prev| {
+        let range = start_offset.and_then(|start| {
             self.offset.map(|end| BlobRange {
-                data_start: ByteOffset(prev.0 + header_size),
+                data_start: start,
                 data_end: end,
             })
         });
 
         self.blob_ranges.push(range.unwrap());
 
-        Some(Ok(RawBlob {
-            header,
-            data: buf,
-        }))
+        Some(Ok(RawBlob { header, data: buf }))
     }
 }
 
@@ -116,40 +115,59 @@ impl<R: Read + Send> Iterator for RawBlobReader<'_, R> {
 #[derive(Debug)]
 pub struct ParBlobIterator<I>
 where
-    I: Iterator<Item=crate::Result<RawBlob>> + Send,
+    I: Iterator<Item = crate::Result<RawBlob>> + Send,
 {
     pub raw_iter: I,
 }
 
 impl<I> ParBlobIterator<I>
 where
-    I: Iterator<Item=crate::Result<RawBlob>> + Send,
+    I: Iterator<Item = crate::Result<RawBlob>> + Send,
 {
     pub fn new(raw_iter: I) -> Self {
         Self { raw_iter }
     }
 
-    pub fn par_bridge(mut self) -> impl ParallelIterator<Item=crate::Result<(usize, Blob)>> {
-        self.raw_iter
-            .enumerate()
+    pub fn par_bridge(self, chunk_size: usize) -> impl ParallelIterator<Item = Vec<Blob>> {
+        chunk_iter(self.raw_iter.map(|res| res.ok()), chunk_size)
             .par_bridge()
-            .map(|(i, res)| match res {
-                Ok(raw) => {
-                    let blob = fileformat::Blob::parse_from_bytes(&raw.data)
-                        .map_err(|e| new_protobuf_error(e, "blob content"))?;
-                    Ok((i, Blob::new(raw.header, blob)))
-                }
-                Err(e) => Err(e),
+            .map(|res| {
+                res.into_iter()
+                    .map(|raw| {
+                        let blob = fileformat::Blob::parse_from_bytes(&raw.data).unwrap();
+                        Blob::new(raw.header, blob)
+                    })
+                    .collect()
             })
     }
-}
 
+    pub fn par_bridge_enumerated(
+        self,
+        chunk_size: usize,
+    ) -> impl ParallelIterator<Item = Vec<(usize, Blob)>> {
+        chunk_iter(
+            self.raw_iter
+                .enumerate()
+                .map(|(i, res)| res.ok().map(|raw| (i, raw))),
+            chunk_size,
+        )
+        .par_bridge()
+        .map(|res| {
+            res.into_iter()
+                .map(|(i, raw)| {
+                    let blob = fileformat::Blob::parse_from_bytes(&raw.data).unwrap();
+                    (i, Blob::new(raw.header, blob))
+                })
+                .collect()
+        })
+    }
+}
 
 pub struct BlobRangeReader<'a, R>
 where
     R: Read + Seek,
 {
-    reader: R,
+    reader: BufReader<R>,
     blob_ranges: &'a Vec<BlobRange>,
     index: usize,
     end_index: usize,
@@ -160,7 +178,12 @@ where
     R: Read + Seek,
 {
     /// Create a new reader from a seekable source and blob range subset
-    pub fn new(source: R, blob_ranges: &'a Vec<BlobRange>, start_idx: usize, end_idx: usize) -> Self {
+    pub fn new(
+        source: BufReader<R>,
+        blob_ranges: &'a Vec<BlobRange>,
+        start_idx: usize,
+        end_idx: usize,
+    ) -> Self {
         let end_idx = end_idx.min(blob_ranges.len());
         Self {
             reader: source,
@@ -178,15 +201,74 @@ impl<'a, R: Read + Seek> Iterator for BlobRangeReader<'a, R> {
         if self.index >= self.end_index {
             return None;
         }
-        let blob_range = self.blob_ranges.get(self.index)?;
-        let size = blob_range.data_end.0 - blob_range.data_start.0;
-        let mut buf = vec![0u8; size as usize];
-        self.reader.seek(SeekFrom::Start(blob_range.data_start.0));
-        self.reader.read_exact(&mut buf);
+        let blob_range = match self.blob_ranges.get(self.index) {
+            Some(range) => range,
+            None => return None,
+        };
+
+        let target_start = blob_range.data_start.0;
+        let size = (blob_range.data_end.0 - target_start) as usize;
+        let mut buf = vec![0u8; size];
+
+        // --- Start Buffer Check and Move Logic ---
+
+        // 1. Get the current position *of the underlying reader*.
+        // `stream_position()` gives the position *after* the buffer content.
+        let pos_after_buffer = match self.reader.stream_position() {
+            Ok(p) => p,
+            Err(e) => return Some(Err(crate::error::new_error(crate::error::ErrorKind::Io(e)))),
+        };
+
+        // 2. Calculate the position of the *start* of the current buffer.
+        let buffer_len = self.reader.buffer().len() as u64;
+        let pos_at_buffer_start = pos_after_buffer.checked_sub(buffer_len).unwrap_or(0);
+
+        // 3. Determine if the target data starts *within* the current buffer.
+        let is_in_buffer = target_start >= pos_at_buffer_start && target_start < pos_after_buffer;
+
+        if is_in_buffer {
+            // Calculate how many bytes to skip/consume from the start of the buffer
+            let offset_to_consume = (target_start - pos_at_buffer_start) as usize;
+
+            // Advance the buffer pointer by consuming the necessary bytes.
+            self.reader.consume(offset_to_consume);
+        } else {
+            // The target is not in the current buffer (either before or far after).
+            // A seek is mandatory, and it will invalidate the current buffer.
+            if let Err(e) = self.reader.seek(SeekFrom::Start(target_start)) {
+                self.index += 1;
+                return Some(Err(crate::error::new_error(crate::error::ErrorKind::Io(e))));
+            }
+        }
+
+        // --- End Buffer Check and Move Logic ---
+
+        // 4. Read the exact number of bytes. If the read starts in the buffer,
+        // `read_exact` will use the remaining buffer contents and then refill if needed.
+        if let Err(e) = self.reader.read_exact(&mut buf) {
+            self.index += 1;
+            return Some(Err(crate::error::new_error(crate::error::ErrorKind::Io(e))));
+        }
+
         self.index += 1;
         Some(Ok(RawBlob {
             header: fileformat::BlobHeader::default(),
             data: buf,
         }))
     }
+}
+
+fn chunk_iter<T>(
+    a: impl IntoIterator<Item = Option<T>>,
+    chunk_size: usize,
+) -> impl Iterator<Item = Vec<T>> {
+    let mut a = a.into_iter();
+    std::iter::from_fn(move || {
+        let out = a
+            .by_ref()
+            .take(chunk_size)
+            .map(|x| x.unwrap())
+            .collect::<Vec<T>>();
+        Some(out)
+    })
 }
