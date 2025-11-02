@@ -5,7 +5,6 @@ use byteorder::ReadBytesExt;
 use protobuf::Message;
 use rayon::prelude::*;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
-use std::iter;
 
 /// Sequential stage: raw bytes from file
 #[derive(Clone, Debug)]
@@ -128,37 +127,51 @@ where
         Self { raw_iter }
     }
 
-    pub fn par_bridge(self, chunk_size: usize) -> impl ParallelIterator<Item = Vec<Blob>> {
-        chunk_iter(self.raw_iter.map(|res| res.ok()), chunk_size)
+    pub fn par_bridge(self, chunk_size: usize) -> impl ParallelIterator<Item = crate::Result<Blob>> {
+        self.raw_iter.par_bridge().map(|res| match res {
+            Ok(raw) => {
+                let blob = fileformat::Blob::parse_from_bytes(&raw.data)
+                    .map_err(|e| new_protobuf_error(e, "blob content"))?;
+                Ok(Blob::new(raw.header, blob))
+            }
+            Err(e) => Err(e),
+        })
+    }
+    pub fn par_bridge_enumerated(
+        self,
+    ) -> impl ParallelIterator<Item = crate::Result<(usize, Blob)>> {
+        self.raw_iter
+            .enumerate()
             .par_bridge()
-            .map(|res| {
-                res.into_iter()
-                    .map(|raw| {
-                        let blob = fileformat::Blob::parse_from_bytes(&raw.data).unwrap();
-                        Blob::new(raw.header, blob)
-                    })
-                    .collect()
+            .map(|(i, res)| match res {
+                Ok(raw) => {
+                    let blob = fileformat::Blob::parse_from_bytes(&raw.data)
+                        .map_err(|e| new_protobuf_error(e, "blob content"))?;
+                    Ok((i, Blob::new(raw.header, blob)))
+                }
+                Err(e) => Err(e),
             })
     }
 
-    pub fn par_bridge_enumerated(
-        self,
-        chunk_size: usize,
-    ) -> impl ParallelIterator<Item = Vec<(usize, Blob)>> {
-        chunk_iter(
-            self.raw_iter
-                .enumerate()
-                .map(|(i, res)| res.ok().map(|raw| (i, raw))),
-            chunk_size,
-        )
-        .par_bridge()
-        .map(|res| {
-            res.into_iter()
-                .map(|(i, raw)| {
-                    let blob = fileformat::Blob::parse_from_bytes(&raw.data).unwrap();
-                    (i, Blob::new(raw.header, blob))
-                })
-                .collect()
+    pub fn iter(self, chunk_size: usize) -> impl Iterator<Item = crate::Result<Blob>> {
+        self.raw_iter.map(|res| match res {
+            Ok(raw) => {
+                let blob = fileformat::Blob::parse_from_bytes(&raw.data)
+                    .map_err(|e| new_protobuf_error(e, "blob content"))?;
+                Ok(Blob::new(raw.header, blob))
+            }
+            Err(e) => Err(e),
+        })
+    }
+
+    pub fn iter_enumerated(self, chunk_size: usize) -> impl Iterator<Item = crate::Result<(usize, Blob)>> {
+        self.raw_iter.enumerate().map(|(i, res)| match res {
+            Ok(raw) => {
+                let blob = fileformat::Blob::parse_from_bytes(&raw.data)
+                    .map_err(|e| new_protobuf_error(e, "blob content"))?;
+                Ok((i, Blob::new(raw.header, blob)))
+            }
+            Err(e) => Err(e),
         })
     }
 }
@@ -224,7 +237,8 @@ impl<'a, R: Read + Seek> Iterator for BlobRangeReader<'a, R> {
         let pos_at_buffer_start = pos_after_buffer.checked_sub(buffer_len).unwrap_or(0);
 
         // 3. Determine if the target data starts *within* the current buffer.
-        let is_in_buffer = target_start >= pos_at_buffer_start && target_start < pos_after_buffer;
+        let is_in_buffer = target_start >= pos_at_buffer_start
+            && target_start < pos_after_buffer;
 
         if is_in_buffer {
             // Calculate how many bytes to skip/consume from the start of the buffer
@@ -258,17 +272,9 @@ impl<'a, R: Read + Seek> Iterator for BlobRangeReader<'a, R> {
     }
 }
 
-fn chunk_iter<T>(
-    a: impl IntoIterator<Item = Option<T>>,
-    chunk_size: usize,
-) -> impl Iterator<Item = Vec<T>> {
-    let mut a = a.into_iter();
-    std::iter::from_fn(move || {
-        let out = a
-            .by_ref()
-            .take(chunk_size)
-            .map(|x| x.unwrap())
-            .collect::<Vec<T>>();
-        Some(out)
-    })
-}
+// fn chunk_iter<T>(a: impl IntoIterator<Item = Option<T>>, chunk_size: usize) -> impl Iterator<Item = Vec<T>> {
+//     let mut a = a.into_iter();
+//     std::iter::from_fn(move || {
+//         Some(a.by_ref().take(chunk_size).)
+//     })
+// }
