@@ -91,7 +91,6 @@ mod error;
 pub mod indexed;
 pub mod mmap_blob;
 pub mod reader;
-pub mod indexing_par_reader;
 mod range_reader;
 mod par_reader;
 
