@@ -140,6 +140,24 @@ impl<R: Read + Send> ElementReader<R> {
                 },
             )
     }
+
+    /// Process blobs in parallel. Decodes the PBF structure in parallel, calls the closure `cb` on
+    /// each element.
+    /// This is generic function which provides functionality to process blobs in parallel in some
+    /// specific custom way. For example, user can filter blobs by some criteria before decompressing
+    /// blob's data.
+    pub fn par_iter_blobs<CB>(self, cb: CB) -> Result<()>
+    where
+        CB: for<'a> Fn(crate::Blob) + Sync + Send,
+    {
+        self.blob_iter
+            .par_bridge()
+            .filter_map(|blob| blob.ok())
+            .map(|blob| cb(blob))
+            .collect::<Vec<_>>();
+
+        Ok(())
+    }
 }
 
 impl ElementReader<BufReader<File>> {
