@@ -242,9 +242,9 @@ message Way {
 
 message Relation {
   enum MemberType {
-    NODE = 0;
-    WAY = 1;
-    RELATION = 2;
+    Node = 0;
+    Way = 1;
+    Relation = 2;
   }
 
   required int64 id = 1;
